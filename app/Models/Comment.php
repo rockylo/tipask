@@ -9,7 +9,7 @@ class Comment extends Model
 {
     use BelongsToUserTrait;
     protected $table = 'comments';
-    protected $fillable = ['user_id', 'content','source_id','source_type','to_user_id','status'];
+    protected $fillable = ['user_id', 'content','source_id','source_type','to_user_id','supports','status'];
 
 
     public static function boot()
@@ -22,18 +22,14 @@ class Comment extends Model
             if(Setting()->get('verify_comment')==1){
                 $comment->status = 0;
             }
-
         });
 
         /*监听删除事件*/
         static::deleting(function($comment){
-
             /*问题、回答、文章评论数 -1*/
-            $comment->source()->decrement('comments');
-
+            $comment->source()->where("comments",">",0)->decrement('comments');
         });
     }
-
 
     public function source()
     {

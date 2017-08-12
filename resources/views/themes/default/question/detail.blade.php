@@ -5,6 +5,7 @@
 @section('seo_description'){{ parse_seo_template('seo_question_description',$question) }}@endsection
 
 @section('css')
+    <link href="{{ asset('/static/js/fancybox/jquery.fancybox.min.css')}}" rel="stylesheet">
     <link href="{{ asset('/static/js/summernote/summernote.css')}}" rel="stylesheet">
 @endsection
 
@@ -23,7 +24,7 @@
                 @if($question->tags)
                     <ul class="taglist-inline">
                         @foreach($question->tags as $tag)
-                            <li class="tagPopup"><a class="tag" href="{{ route('ask.tag.index',['name'=>$tag->name]) }}">{{ $tag->name }}</a></li>
+                            <li class="tagPopup"><a class="tag" href="{{ route('ask.tag.index',['id'=>$tag->id]) }}">{{ $tag->name }}</a></li>
                         @endforeach
                     </ul>
                 @endif
@@ -41,6 +42,9 @@
                                 @endif
                                 @if( $question->status !== 2 && Auth()->user()->id === $question->user_id )
                                 <li><a href="#" data-toggle="modal" data-target="#appendReward"  ><i class="fa fa-database"></i> 追加悬赏</a></li>
+                                @endif
+                                @if( $question->status !== 2 )
+                                    <li><a href="#" data-toggle="modal" data-target="#inviteAnswer"><i class="fa fa-paper-plane-o" aria-hidden="true"></i> 邀请回答</a></li>
                                 @endif
                             @endif
                         </ul>
@@ -73,15 +77,20 @@
                             <li class="pull-right">
                                 <a class="comments mr-10" data-toggle="collapse" href="#comments-answer-{{ $bestAnswer->id }}" aria-expanded="false" aria-controls="comment-{{ $bestAnswer->id }}"><i class="fa fa-comment-o"></i> {{ $bestAnswer->comments }} 条评论</a>
                                 <button class="btn btn-default btn-sm btn-support" data-source_id="{{ $bestAnswer->id }}" data-source_type="answer" data-support_num="{{ $bestAnswer->supports }}"><i class="fa fa-thumbs-o-up"></i> {{ $bestAnswer->supports }}</button>
+                                @if($bestAnswer->user->qrcode)
+                                    <button class="btn btn-warning btn-sm" data-toggle="modal" data-target="#payment-qrcode-modal-answer-{{ $bestAnswer->id }}" ><i class="fa fa-heart-o" aria-hidden="true"></i> 打赏</button>
+                                @endif
                             </li>
                         </ul>
                     </div>
                     @include('theme::comment.collapse',['comment_source_type'=>'answer','comment_source_id'=>$bestAnswer->id,'hide_cancel'=>false])
-
+                    @if($bestAnswer->user->qrcode)
+                        @include('theme::layout.qrcode_pament',['source_id'=>'answer-'.$bestAnswer->id,'paymentUser'=>$bestAnswer->user,'message'=>'如果觉得我的回答对您有用，请随意打赏。你的支持将鼓励我继续创作！'])
+                    @endif
                     <div class="media user-info border-top">
                         <div class="media-left">
                             <a href="{{ route('auth.space.index',['user_id'=>$bestAnswer->user_id]) }}" target="_blank">
-                                <img class="avatar-40"  src="{{ route('website.image.avatar',['avatar_name'=>$bestAnswer->user_id.'_middle']) }}" alt="{{ $bestAnswer->user->name }}"></a>
+                                <img class="avatar-40 hidden-xs"  src="{{ get_user_avatar($bestAnswer->user_id) }}" alt="{{ $bestAnswer->user->name }}"></a>
                             </a>
                         </div>
                         <div class="media-body">
@@ -94,7 +103,7 @@
                             </div>
 
                             <div class="content">
-                                <span class="answer-time text-muted hidden-xs">@if($bestAnswer->user->authentication && $bestAnswer->user->authentication->status === 1)擅长：{{ $bestAnswer->user->authentication->skill }} | @endif采纳率 {{ $bestAnswer->user->userData->adoptPercent() }}% | 回答于 {{ timestamp_format($bestAnswer->created_at) }}</span>
+                                <span class="answer-time text-muted hidden-xs">@if($bestAnswer->user->authentication && $bestAnswer->user->authentication->status === 1)擅长：{{ $bestAnswer->user->authentication->skill }} | @endif 采纳率 {{ $bestAnswer->user->userData->adoptPercent() }}% | 回答于 {{ timestamp_format($bestAnswer->created_at) }}</span>
                             </div>
                         </div>
 
@@ -115,7 +124,7 @@
                 <div class="media">
                     <div class="media-left">
                         <a href="{{ route('auth.space.index',['user_id'=>$answer->user_id]) }}" class="avatar-link user-card" target="_blank">
-                            <img class="avatar-40"  src="{{ route('website.image.avatar',['avatar_name'=>$answer->user_id.'_middle']) }}" alt="{{ $answer->user['name'] }}"></a>
+                            <img class="avatar-40 hidden-xs"  src="{{ get_user_avatar($answer->user_id) }}" alt="{{ $answer->user['name'] }}"></a>
                         </a>
                     </div>
                     <div class="media-body">
@@ -143,7 +152,10 @@
                                     <li><a href="{{ route('ask.answer.edit',['id'=>$answer->id]) }}" data-toggle="tooltip" data-placement="right" title="" data-original-title="继续完善回答内容"><i class="fa fa-edit"></i> 编辑</a></li>
                                     @endif
                                     @if($question->status!==2 &&  ( Auth()->user()->id === $question->user_id || Auth()->user()->is('admin') ))
-                                    <li><a href="#" class="adopt-answer" data-toggle="modal" data-target="#adoptAnswer" data-answer_id="{{ $answer->id }}" data-answer_content="{{ str_limit($answer->content,200) }}"><i class="fa fa-check-square-o"></i> 采纳为最佳答案</a></li>
+                                    <li><a href="#" class="adopt-answer" data-toggle="modal" data-target="#adoptAnswer" data-answer_id="{{ $answer->id }}" data-answer_content="{{ str_limit($answer->content,200) }}"><i class="fa fa-check-square-o"></i> 采纳</a></li>
+                                    @endif
+                                    @if($answer->user->qrcode)
+                                        <li><a href="#" data-toggle="modal" data-target="#payment-qrcode-modal-answer-{{ $answer->id }}" ><i class="fa fa-heart-o" aria-hidden="true"></i> 打赏</a></li>
                                     @endif
                                 @endif
                                 <li class="pull-right">
@@ -152,6 +164,9 @@
                             </ul>
                         </div>
                         @include('theme::comment.collapse',['comment_source_type'=>'answer','comment_source_id'=>$answer->id,'hide_cancel'=>false])
+                        @if($answer->user->qrcode)
+                            @include('theme::layout.qrcode_pament',['source_id'=>'answer-'.$answer->id,'paymentUser'=>$answer->user,'message'=>'如果觉得我的回答对您有用，请随意打赏。你的支持将鼓励我继续创作！'])
+                        @endif
                     </div>
                 </div>
                 @endforeach
@@ -176,12 +191,25 @@
                             @if($errors->has('content')) <p class="help-block">{{ $errors->first('content') }}</p> @endif
                         </div>
 
-                        <div id="answerSubmit" class="mt-15 clearfix">
-                            <div class="checkbox pull-left">
-                                <label><input type="checkbox" id="attendTo" name="followed" value="1" checked />关注该问题</label>
+                        <div class="row mt-20">
+                            <div class="col-xs-12 col-md-10">
+                                <ul class="list-inline">
+                                        <li class="checkbox"> <label><input type="checkbox" id="attendTo" name="followed" value="1" checked />关注该问题</label></li>
+                                    @if( Setting()->get('code_create_answer') )
+                                        <li class="pull-right">
+                                            <div class="form-group @if ($errors->first('captcha')) has-error @endif">
+                                                <input type="text" class="form-control" name="captcha" required="" placeholder="验证码" />
+                                                @if ($errors->first('captcha'))
+                                                    <span class="help-block">{{ $errors->first('captcha') }}</span>
+                                                @endif
+                                                <div class="mt-10"><a href="javascript:void(0);" id="reloadCaptcha"><img src="{{ captcha_src()}}"></a></div>
+                                            </div>
+                                        </li>
+                                    @endif
+                                </ul>
                             </div>
-                            <div class="pull-right">
-                                <input type="hidden" id="answer_editor_content"  name="content" value=""  />
+                            <div class="col-xs-12 col-md-2">
+                                <input type="hidden" id="answer_editor_content"  name="content" value="{{ old('content','') }}"  />
                                 <button type="submit" class="btn btn-primary pull-right">提交回答</button>
                             </div>
                         </div>
@@ -289,13 +317,65 @@
             </div>
         </div>
     </div>
+    <div class="modal" id="inviteAnswer" tabindex="-1" role="dialog" aria-labelledby="inviteAnswerLabel">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="appendModalLabel">邀请回答</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-success" role="alert" id="rewardAlert">
+                        <i class="fa fa-exclamation-circle"></i> 不知道答案？你还可以邀请他人进行解答，每天可以邀请{{ config('tipask.user_invite_limit') }}次。
+                    </div>
+                    <form class="invite-popup" id="inviteEmailForm"  action="{{ route('ask.question.inviteEmail',['question_id'=>$question->id]) }}" method="get">
+                        <div style="position: relative;">
+                            <ul class="nav nav-tabs">
+                                <li class="active"><a data-by="username" href="#by-username" data-toggle="tab">站内邀请</a></li>
+                                <li><a data-by="email" href="#by-email" data-toggle="tab">Email 邀请</a></li>
+                            </ul>
+                            <div class="tab-content invite-tab-content mt-10">
+                                <div class="tab-pane active" id="by-username" data-type="username">
+                                    <div class="search-user" id="questionSlug">
+                                        <input id="invite_word" class="text-28 form-control" type="text" name="word" autocomplete="off" placeholder="搜索你要邀请的人">
+                                    </div>
+                                    <p class="help-block" id="questionInviteUsers"></p>
+                                    <div class="invite-question-modal">
+                                        <div class="row invite-question-list" id="invite_user_list">
+                                            <div class="text-center" id="invite_loading">
+                                                <i class="fa fa-spinner fa-spin"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane" id="by-email" data-type="email">
+                                    <div class="mb-10">
+                                        <input class="text-28 form-control" type="email" name="sendTo" placeholder="Email 地址">
+                                    </div>
+                                    <p><textarea class="textarea-13 form-control" name="message" rows="5">我在 {{ Setting()->get('website_name') }} 上遇到了问题「{{ $question->title }}」 → {{ route('ask.question.detail',['question_id'=>$question->id]) }}，希望您能帮我解答 </textarea></p>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+
+                </div>
+                <div class="modal-footer" style="display:none;">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary invite-email-btn">确认</button>
+                </div>
+            </div>
+        </div>
+    </div>
     @endif
 @endsection
 
 @section('script')
     <script src="{{ asset('/static/js/summernote/summernote.min.js') }}"></script>
     <script src="{{ asset('/static/js/summernote/lang/summernote-zh-CN.min.js') }}"></script>
+    <link href="{{ asset('/static/js/fancybox/jquery.fancybox.min.css')}}" rel="stylesheet">
     <script type="text/javascript">
+        var invitation_timer = null;
+        var question_id = "{{ $question->id }}";
         $(document).ready(function() {
             @if(Auth()->check())
             /*问题悬赏*/
@@ -351,7 +431,6 @@
                 clear_comments($(this).data('source_type'),$(this).data('source_id'));
             });
 
-
             /*收藏问题或文章*/
             $("#collect-button").click(function(){
                 $("#collect-button").button('loading');
@@ -382,6 +461,140 @@
                 document.location = "/answer/adopt/"+$(this).data('answer_id');
             });
 
+            /*邀请回答模块逻辑处理*/
+            /*私信模块处理*/
+
+            $('#inviteAnswer').on('show.bs.modal', function (event) {
+
+                var button = $(event.relatedTarget);
+                var modal = $(this);
+                loadInviteUsers(question_id,'');
+                loadQuestionInvitedUsers(question_id,'part');
+
+            });
+
+
+            $("#invite_word").on("keydown",function(){
+                if(invitation_timer){
+                    clearTimeout(invitation_timer);
+                }
+                invitation_timer = setTimeout(function() {
+                    var word = $("#invite_word").val();
+                    console.log(word);
+                    loadInviteUsers(question_id,word);
+                }, 500);
+            });
+
+            $(".invite-question-list").on("click",".invite-question-item-btn",function(){
+                var invite_btn = $(this);
+                var question_id = invite_btn.data('question_id');
+                var user_id = invite_btn.data('user_id');
+
+                $.ajax({
+                    type: "get",
+                    url:"/question/invite/"+question_id+"/"+user_id,
+                    success: function(data){
+                        if(data.code > 0){
+                            alert(data.message);
+                            return false;
+                        }
+                        invite_btn.html('已邀请');
+                        invite_btn.attr("class","btn btn-default btn-xs invite-question-item-btn disabled");
+                        loadQuestionInvitedUsers(question_id,'part');
+                    },
+                    error: function(data){
+                        console.log(data);
+                    }
+                });
+            });
+
+            $("#inviteAnswer").on("click","#showAllInvitedUsers",function(){
+                loadQuestionInvitedUsers({{ $question->id }},'all');
+            });
+
+            /*tag切换*/
+            $('#inviteAnswer a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+                var tabBy = $(this).data("by");
+                if( tabBy == 'email' ){
+                    $("#inviteAnswer .modal-footer").show();
+                }else{
+                    $("#inviteAnswer .modal-footer").hide();
+                }
+
+            });
+
+            /*邀请邮箱回答*/
+            $("#inviteAnswer .invite-email-btn").click(function(){
+                var formData = $("#inviteEmailForm").serialize();
+                $.ajax({
+                    type: "post",
+                    url: "/question/inviteEmail/{{ $question->id }}",
+                    data:formData,
+                    success: function(data){
+                        if(data.code>0){
+                            alert(data.message);
+                        }else{
+                            alert("邀请成功，邀请邮件已发送！");
+                        }
+                        $("#inviteAnswer").modal("hide");
+
+                    },
+                    error: function(data){
+                        console.log(data);
+                        alert("操作出错，请稍后再试");
+                        $("#inviteAnswer").modal("hide");
+                    }
+                });
+            });
+
+
         });
+
+
+        /**
+         * @param questionId
+         * @param word
+         */
+        function loadInviteUsers(questionId,word){
+            $.ajax({
+                type: "get",
+                url: "/ajax/loadInviteUsers",
+                data:{question_id:questionId,word:word},
+                success: function(data){
+                    console.log(data);
+                    var inviteItemHtml = '';
+                    if(data.code > 0){
+                        inviteItemHtml = '<div class="text-center" id="invite_loading"><p>暂无数据</p></div>';
+                    }else{
+                        $.each(data.message,function(i,item){
+                            inviteItemHtml+= '<div class="col-md-12 invite-question-item">' +
+                                    '<img src="'+item.avatar+'" />'+
+                                    '<div class="invite-question-user-info">'+
+                                    '<a class="invite-question-user-name" target="_blank" href="'+item.url+'">'+item.name+'</a>'+
+                                    '<span class="invite-question-user-desc">'+item.tag_name+' 标签下有 '+item.tag_answers+' 个回答</span>'+
+                                    '</div>';
+                            if(item.isInvited>0){
+                               inviteItemHtml += '<button type="button" class="btn btn-default btn-xs invite-question-item-btn disabled" data-question_id="{{ $question->id }}"  data-user_id="'+item.id+'">已邀请</button>';
+                            }else{
+                               inviteItemHtml += '<button type="button" class="btn btn-default btn-xs invite-question-item-btn" data-question_id="{{ $question->id }}"  data-user_id="'+item.id+'">邀请回答</button>';
+                            }
+                            inviteItemHtml += '</div>';
+                        });
+                    }
+                    $("#invite_user_list").html(inviteItemHtml);
+                },
+                error: function(data){
+                    console.log(data);
+                    $("#invite_user_list").html('<div class="text-center" id="invite_loading"><p>操作出错</p></div>');
+
+                }
+            });
+        }
+
+        /*加载已被邀请的用户信息*/
+        function loadQuestionInvitedUsers(questionId,type){
+            $("#questionInviteUsers").load('/question/'+questionId+'/invitations/'+type);
+        }
+
     </script>
 @endsection

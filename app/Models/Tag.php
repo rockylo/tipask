@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Relations\BelongsToCategoryTrait;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\App;
 
 class Tag extends Model
 {
+    use BelongsToCategoryTrait;
     protected $table = 'tags';
-    protected $fillable = ['name', 'logo', 'description'];
+    protected $fillable = ['name', 'logo', 'description','category_id','followers'];
 
 
     public static function boot()
@@ -21,12 +23,13 @@ class Tag extends Model
             }
         });
 
-
         /*监听删除事件*/
         static::deleted(function($tag){
             /*删除关注*/
             Attention::where('source_type','=',get_class($tag))->where('source_id','=',$tag->id)->delete();
-
+            $tag->userTags()->delete();
+            /*删除用户标签*/
+            UserTag::where('tag_id','=',$tag->id)->delete();
             if(Setting()->get('xunsearch_open',0) == 1){
                 App::offsetGet('search')->delete($tag);
             }
@@ -58,7 +61,6 @@ class Tag extends Model
             {
                 $taggable->tags()->attach($tag->id);
             }
-
         }
         return $tags;
     }
@@ -93,6 +95,9 @@ class Tag extends Model
 
 
 
+    public function userTags(){
+        return $this->hasMany('App\Models\UserTag','tag_id');
+    }
 
 
     /*相关标签检索*/

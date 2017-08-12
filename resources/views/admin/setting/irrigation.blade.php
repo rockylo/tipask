@@ -6,9 +6,6 @@
             防灌水设置
             <small>全站防灌水策略设置</small>
         </h1>
-        <ol class="breadcrumb">
-            <li><a href="{{ route('admin.setting.website') }}"><i class="fa fa-mail-reply"></i> 返回</a></li>
-        </ol>
     </section>
     <section class="content">
         <div class="row">
@@ -64,10 +61,53 @@
                                 <label for="website_url">启用验证码</label>
                                 <span class="text-muted">(验证码可以避免恶意注册及恶意灌水，请选择需要打开验证码的操作)</span>
                                 <div class="checkbox">
-                                    <label><input type="checkbox" name="code_login" value="1"  @if(Setting()->get('code_login') == 1) checked @endif /> 登录页面 </label>
-                                    <label><input type="checkbox" name="code_register" value="1" @if(Setting()->get('code_register') == 1) checked @endif /> 注册页面</label>
+                                    <input type="checkbox" name="code_login" value="1"  @if(Setting()->get('code_login') == 1) checked @endif /> 登录
+                                    <label><input type="checkbox" name="code_register" value="1" @if(Setting()->get('code_register') == 1) checked @endif /> 注册</label>
+                                    <label><input type="checkbox" name="code_create_question" value="1" @if(Setting()->get('code_create_question') == 1) checked @endif /> 发起提问</label>
+                                    <label><input type="checkbox" name="code_create_answer" value="1" @if(Setting()->get('code_create_answer') == 1) checked @endif /> 回答问题</label>
+                                    <label><input type="checkbox" name="code_create_article" value="1" @if(Setting()->get('code_create_article') == 1) checked @endif /> 发布文章</label>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <div class="box box-default">
+                        <div class="box-header with-border">
+                            <h3 class="box-title">内容写入限制策略</h3>
+                        </div>
+                        <div class="box-body">
+                            <div class="form-group">
+                                <label for="website_url">1小时内最大提问数</label>
+                                <span class="text-muted">(设置为0则不做任何限制)</span>
+                                <input type="text" class="form-control" name="question_limit_num" placeholder="0为不限制" value="{{ old('question_limit_num',Setting()->get('question_limit_num' , 0)) }}"  />
+                            </div>
+                            <div class="form-group">
+                                <label for="website_url">1小时内最大回答数</label>
+                                <span class="text-muted">(设置为0则不做任何限制)</span>
+                                <input type="text" class="form-control" name="answer_limit_num" placeholder="0为不限制" value="{{ old('answer_limit_num',Setting()->get('answer_limit_num' , 0)) }}"  />
+                            </div>
+                            <div class="form-group">
+                                <label for="website_url">1小时内最大文章发表次数</label>
+                                <span class="text-muted">(设置为0则不做任何限制)</span>
+                                <input type="text" class="form-control" name="article_limit_num" placeholder="0为不限制" value="{{ old('article_limit_num',Setting()->get('article_limit_num' , 0)) }}"  />
+                            </div>
+                            <hr />
+                            <div class="form-group">
+                                <label for="website_url">提问后编辑内容时效</label>
+                                <span class="text-muted">(默认单位是分钟，设置后用户只能在编辑时间有效期内进行修改，设置为0则不做任何限制)</span>
+                                <input type="text" class="form-control" name="edit_question_timeout" placeholder="0为不限制" value="{{ old('edit_question_timeout',Setting()->get('edit_question_timeout' , 0)) }}"  />
+                            </div>
+                            <div class="form-group">
+                                <label for="website_url">发起文章后编辑内容时效</label>
+                                <span class="text-muted">(默认单位是分钟，设置后用户只能在编辑时间有效期内进行修改，设置为0则不做任何限制)</span>
+                                <input type="text" class="form-control" name="edit_article_timeout" placeholder="0为不限制" value="{{ old('edit_article_timeout',Setting()->get('edit_article_timeout' , 0)) }}"  />
+                            </div>
+                            <div class="form-group">
+                                <label for="website_url">撰写回答后编辑内容时效</label>
+                                <span class="text-muted">(默认单位是分钟，设置后用户只能在编辑时间有效期内进行修改，设置为0则不做任何限制)</span>
+                                <input type="text" class="form-control" name="edit_answer_timeout" placeholder="0为不限制" value="{{ old('edit_answer_timeout',Setting()->get('edit_answer_timeout' , 0)) }}"  />
+                            </div>
+
                         </div>
                     </div>
                     <div>

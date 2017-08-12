@@ -14,7 +14,7 @@
     <!-- Bootstrap -->
     <link href="{{ asset('/static/css/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet" />
     <link href="{{ asset('/static/css/font-awesome/css/font-awesome.min.css') }}" rel="stylesheet" />
-    <link href="{{ asset('/css/default/global.css')}}" rel="stylesheet" />
+    <link href="{{ asset('/css/default/global.css')}}?v={{ config('tipask.release') }}" rel="stylesheet" />
     @yield('css')
     <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
     <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
@@ -68,7 +68,7 @@
                         <li><a href="{{ route('auth.message.index') }}" class="active" id="unread_messages"><i class="fa fa-envelope-o fa-lg"></i></a></li>
                         <li class="dropdown user-avatar">
                             <a href="{{ route('auth.profile.base') }}" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
-                                <img class="avatar-32 mr-5" alt="{{ Auth()->user()->name }}" src="{{ route('website.image.avatar',['avatar_name'=>Auth()->user()->id.'_middle'])}}" >
+                                <img class="avatar-32 mr-5" alt="{{ Auth()->user()->name }}" src="{{ get_user_avatar(Auth()->user()->id) }}" >
                                 <span>{{ Auth()->user()->name }}</span>
                             </a>
                             <ul class="dropdown-menu" role="menu">
@@ -143,7 +143,9 @@
         <div class="text-center">
             <a href="{{ route('website.index') }}">{{ Setting()->get('website_name') }}</a><span class="span-line">|</span>
             <a href="mailto:{{ Setting()->get('website_admin_email') }}" target="_blank">联系我们</a><span class="span-line">|</span>
-            <a href="http://www.miibeian.gov.cn" target="_blank">{{ Setting()->get('website_icp') }}</a>
+            @if( Setting()->get('website_icp') )
+                <a href="http://www.miibeian.gov.cn" target="_blank">{{ Setting()->get('website_icp') }}</a>
+            @endif
         </div>
         <div class="copyright mt-10">
             Powered By <a href="http://www.tipask.com" target="_blank">{{ Config('tipask.version') }}</a> Release {{ config('tipask.release') }} ©2009-{{ gmdate('Y') }} tipask.com
@@ -220,7 +222,7 @@
 <script type="text/javascript">
     var is_login = Boolean("{{ Auth()->check() }}");
 </script>
-<script src="{{ asset('js/global.js') }}"></script>
+<script src="{{ asset('js/global.js') }}?v={{ config('tipask.release') }}"></script>
 @yield('script')
 
 {!! Setting()->get('website_footer') !!}

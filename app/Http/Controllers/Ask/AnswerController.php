@@ -6,6 +6,8 @@ use App\Models\Answer;
 use App\Models\Attention;
 use App\Models\Question;
 use App\Models\QuestionInvitation;
+use App\Models\Setting;
+use App\Models\UserTag;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use App\Http\Requests;
@@ -29,10 +31,19 @@ class AnswerController extends Controller
      */
     public function store(Request $request)
     {
-        if($request->user()->status === 0){
+        $loginUser = $request->user();
+        if($loginUser->status === 0){
             return $this->error(route('website.index'),'操作失败！您的邮箱还未验证，验证后才能进行该操作！');
         }
-        
+
+        /*防灌水检查*/
+        if( Setting()->get('answer_limit_num') > 0 ){
+            $questionCount = $this->counter('answer_num_'. $loginUser->id);
+            if( $questionCount > Setting()->get('answer_limit_num')){
+                return $this->showErrorMsg(route('website.index'),'你已超过每小时回答限制数'.Setting()->get('answer_limit_num').'，请稍后再进行该操作，如有疑问请联系管理员!');
+            }
+        }
+
         $question_id = $request->input('question_id');
         $question = Question::find($question_id);
 
@@ -41,6 +52,11 @@ class AnswerController extends Controller
         }
         $loginUser = $request->user();
         $request->flash();
+        /*普通用户修改需要输入验证码*/
+        if( Setting()->get('code_create_answer') ){
+            $this->validateRules['captcha'] = 'required|captcha';
+        }
+
         $this->validate($request,$this->validateRules);
         $answerContent = clean($request->input('content'));
         $data = [
@@ -59,12 +75,14 @@ class AnswerController extends Controller
             /*问题回答数+1*/
             $question->increment('answers');
 
+            UserTag::multiIncrement($loginUser->id,$question->tags()->get(),'answers');
+
             /*记录动态*/
             $this->doing($answer->user_id,'answer',get_class($question),$question->id,$question->title,$answer->content);
 
             /*记录通知*/
             $this->notify($answer->user_id,$question->user_id,'answer',$question->title,$question->id,$answer->content);
-
+            
             /*回答后通知关注问题*/
             if(intval($request->input('followed'))){
                 $attention = Attention::where("user_id",'=',$request->user()->id)->where('source_type','=',get_class($question))->where('source_id','=',$question->id)->count();
@@ -82,11 +100,12 @@ class AnswerController extends Controller
             }
 
 
+
+
             /*修改问题邀请表的回答状态*/
             QuestionInvitation::where('question_id','=',$question->id)->where('user_id','=',$request->user()->id)->update(['status'=>1]);
 
-
-
+            $this->counter( 'answer_num_'. $answer->user_id , 1 , 3600 );
 
             /*记录积分*/
             if($answer->status ==1 && $this->credit($request->user()->id,'answer',Setting()->get('coins_answer'),Setting()->get('credits_answer'),$question->id,$question->title)){
@@ -101,14 +120,17 @@ class AnswerController extends Controller
 
     public function edit($id,Request $request)
     {
-        $answer = Answer::find($id);
-
-        if(!$answer){
-            abort(404);
-        }
+        $answer = Answer::findOrFail($id);
 
         if($answer->user_id !== $request->user()->id && !$request->user()->is('admin')){
             abort(403);
+        }
+        /*编辑回答时效控制*/
+        if( !$request->user()->is('admin') && Setting()->get('edit_answer_timeout') ){
+            if( $answer->created_at->diffInMinutes() > Setting()->get('edit_answer_timeout') ){
+                return $this->showErrorMsg(route('ask.question.detail',['id'=>$answer->question_id]),'你已超过回答可编辑的最大时长，不能进行编辑了。如有疑问请联系管理员!');
+            }
+
         }
 
         return view("theme::question.edit_answer")->with('answer',$answer);
@@ -118,16 +140,18 @@ class AnswerController extends Controller
     /*修改问题内容*/
     public function update($id,Request $request)
     {
-        $answer = Answer::find($id);
-        if(!$answer){
-            abort(404);
-        }
+        $answer = Answer::findOrFail($id);
 
         if($answer->user_id !== $request->user()->id && !$request->user()->is('admin')){
             abort(403);
         }
 
         $request->flash();
+        /*普通用户修改需要输入验证码*/
+        if( Setting()->get('code_create_answer') ){
+            $this->validateRules['captcha'] = 'required|captcha';
+        }
+
         $this->validate($request,$this->validateRules);
 
         $answer->content = clean($request->input('content'));
@@ -142,13 +166,15 @@ class AnswerController extends Controller
 
     public function adopt($id,Request $request)
     {
-        $answer = Answer::find($id);
-        if(!$answer){
-            abort(404);
-        }
+        $answer = Answer::findOrFail($id);
 
         if(($request->user()->id !== $answer->question->user_id) && !$request->user()->is('admin')  ){
             abort(403);
+        }
+
+        /*防止重复采纳*/
+        if($answer->adopted_at>0){
+            return $this->error(route('ask.question.detail',['question_id'=>$answer->question_id]),'该回答已被采纳，不能重复采纳');
         }
 
 
@@ -161,22 +187,27 @@ class AnswerController extends Controller
             $answer->question->status = 2;
             $answer->question->save();
 
-            $answer->user->userData()->increment('adoptions');
+            $answer->user->userData->increment('adoptions');
 
             /*悬赏处理*/
             $this->credit($answer->user_id,'answer_adopted',($answer->question->price+Setting()->get('coins_adopted',0)),Setting()->get('credits_adopted'),$answer->question->id,$answer->question->title);
 
-
-            DB::commit();
-
+            UserTag::multiIncrement($request->user()->id,$answer->question->tags()->get(),'adoptions');
             $this->notify($request->user()->id,$answer->user_id,'adopt_answer',$answer->question_title,$answer->question_id);
-            $this->sendEmail($answer->user_id,' ','恭喜！你对于问题['.$answer->question_title.']的回答被采纳了！',$answer);
+            DB::commit();
+            /*发送邮件通知*/
+            if($answer->user->allowedEmailNotify('adopt_answer')){
+                $emailSubject = '您对于问题「'.$answer->question_title.'」的回答被采纳了！';
+                $emailContent = "您对于问题「".$answer->question_title."」的回答被采纳了！<br /> 点击此链接查看详情  →  ".route('ask.question.detail',['question_id'=>$answer->question_id]);
+                $this->sendEmail($answer->user->email,$emailSubject,$emailContent);
+            }
+
             return $this->success(route('ask.question.detail',['question_id'=>$answer->question_id]),"回答采纳成功!".get_credit_message(Setting()->get('credits_adopted'),Setting()->get('coins_adopted')));
 
         }catch (\Exception $e) {
+            echo $e->getMessage();
             DB::rollBack();
         }
-
         return $this->error(route('ask.question.detail',['question_id'=>$answer->question_id]),"回答采纳失败，请稍后再试！");
 
 
@@ -189,12 +220,7 @@ class AnswerController extends Controller
     public function detail($question_id,$id,Request $request)
     {
 
-        $question = Question::find($question_id);
-
-        if(empty($question)){
-            abort(404);
-        }
-
+        $question = Question::findOrFail($question_id);
 
         /*问题查看数+1*/
         $question->increment('views');

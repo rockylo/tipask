@@ -15,6 +15,8 @@
             <li><a href="{{ route('admin.setting.irrigation') }}"><i class="fa fa-circle-o"></i> 防灌水设置</a></li>
             <li><a href="{{ route('admin.setting.credits') }}"><i class="fa fa-circle-o"></i> 积分设置</a></li>
             <li><a href="{{ route('admin.setting.seo') }}"><i class="fa fa-circle-o"></i> SEO设置</a></li>
+            {{--<li><a href="{{ route('admin.setting.variables') }}"><i class="fa fa-circle-o"></i> 变量设置</a></li>--}}
+            <li><a href="{{ route('admin.system.index') }}"><i class="fa fa-circle-o"></i> 系统工具</a></li>
         </ul>
     </li>
 
@@ -25,7 +27,7 @@
         </a>
         <ul class="treeview-menu" id="manage_user">
             <li><a href="{{ route('admin.user.index') }}"><i class="fa fa-circle-o"></i> 用户管理</a></li>
-            <li><a href="{{ route('admin.authentication.index') }}"><i class="fa fa-circle-o"></i> 行家管理</a></li>
+            <li><a href="{{ route('admin.authentication.index') }}"><i class="fa fa-circle-o"></i> 专家管理</a></li>
         </ul>
     </li>
 
@@ -40,6 +42,7 @@
             <li><a href="{{ route('admin.article.index') }}"><i class="fa fa-circle-o"></i> 文章管理</a></li>
             <li><a href="{{ route('admin.comment.index') }}"><i class="fa fa-circle-o"></i> 评论管理</a></li>
             <li><a href="{{ route('admin.tag.index') }}"><i class="fa fa-circle-o"></i> 标签管理</a></li>
+            <li><a href="{{ route('admin.category.index') }}"><i class="fa fa-circle-o"></i> 分类管理</a></li>
         </ul>
     </li>
 
@@ -56,6 +59,17 @@
             <li><a href="{{ route('admin.friendshipLink.index') }}"><i class="fa fa-circle-o"></i> 友情链接</a></li>
         </ul>
     </li>
+
+    <li class="treeview">
+        <a href="#">
+            <i class="fa fa-database"></i> <span>财务</span>
+            <i class="fa fa-angle-left pull-right"></i>
+        </a>
+        <ul class="treeview-menu" id="finance">
+            <li><a href="{{ route('admin.credit.index') }}"><i class="fa fa-circle-o"></i> 积分管理</a></li>
+        </ul>
+    </li>
+
 
     <li class="treeview">
         <a href="#">

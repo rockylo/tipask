@@ -37,6 +37,18 @@ class ProfileController extends Controller
             $user->description = $request->input('description');
             $user->province = $request->input('province');
             $user->city = $request->input('city');
+            if($request->hasFile('qrcode')){
+                $validateRules = [
+                    'qrcode' => 'required|image|max:'.config('tipask.upload.image.max_size'),
+                ];
+                $this->validate($request,$validateRules);
+                $file = $request->file('qrcode');
+                $extension = $file->getClientOriginalExtension();
+                $filePath = 'qrcodes/'.gmdate("Y")."/".gmdate("m")."/".uniqid(str_random(8)).'.'.$extension;
+                Storage::disk('local')->put($filePath,File::get($file));
+                Image::make(storage_path('app/'.$filePath))->resize(320,435)->save();
+                $user->qrcode = str_replace("/","-",$filePath);
+            }
             $user->save();
             return $this->success(route('auth.profile.base'),'个人资料修改成功');
 
@@ -163,7 +175,11 @@ class ProfileController extends Controller
                     'token' => EmailToken::createToken(),
                 ]);
 
-                $this->sendEmail($request->user()->id,'verify','您好，请激活您在'.Setting()->get('website_name').'注册的邮箱！',$emailToken,true);
+                if($emailToken){
+                    $subject = '欢迎注册'.Setting()->get('website_name').',请激活您注册的邮箱！';
+                    $content = "「".$request->user()->name."」您好，请激活您在 ".Setting()->get('website_name')." 的注册邮箱！<br /> 请在1小时内点击该链接激活注册账号 → ".route('auth.email.verifyToken',['action'=>$emailToken->action,'token'=>$emailToken->token])."<br />如非本人操作，请忽略此邮件！";
+                    $this->sendEmail($emailToken->email,$subject,$content);
+                }
 
                 return $this->success(route('auth.profile.email'),'邮箱修改成功！一封验证邮件已经发到您的邮箱'.$request->user()->email.',请登陆邮箱进行验证！');
             }
@@ -185,18 +201,18 @@ class ProfileController extends Controller
     public function anyNotification(Request $request)
     {
         if($request->isMethod('post')){
-            $siteNotifications = $request->input('site_notifications');
-            $emailNotifications = $request->input('email_notifications');
+            $siteNotifications = $request->input('site_notifications','');
+            $emailNotifications = $request->input('email_notifications','');
+            $request->user()->site_notifications = '';
             if($siteNotifications){
                 $request->user()->site_notifications = implode(",",$siteNotifications);
             }
+            $request->user()->email_notifications = '';
             if($emailNotifications){
                 $request->user()->email_notifications = implode(",",$emailNotifications);
             }
 
-            if($siteNotifications || $emailNotifications){
-                $request->user()->save();
-            }
+            $request->user()->save();
             return $this->success(route('auth.profile.notification'),'通知提醒策略设置成功');
 
         }

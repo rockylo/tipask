@@ -25,13 +25,13 @@ class Answer extends Model
 
         });
         /*监听删除事件*/
-        static::deleted(function($answer){
+        static::deleting(function($answer){
 
             /*问题回答数 -1 */
-            $answer->question->decrement('answers');
+            $answer->question()->where('answers','>',0)->decrement('answers');
 
             /*用户回答数 -1 */
-            $answer->user->userData->decrement('answers');
+            $answer->user->userData()->where('answers','>',0)->decrement('answers');
 
             /*删除动态*/
             Doing::where('source_type','=',get_class($answer))->where('source_id','=',$answer->id)->delete();

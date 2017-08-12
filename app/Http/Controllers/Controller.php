@@ -12,6 +12,7 @@ use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -45,6 +46,32 @@ abstract class Controller extends BaseController
 
     protected function showErrorMsg($url , $message){
         return view('errors.error')->with(compact('url','message'));
+    }
+
+    /**
+     * 成功回调
+     * @param $message
+     */
+    protected function ajaxSuccess($message){
+        $data = array(
+            'code' => 0,
+            'message' => $message
+        );
+        return response()->json($data);
+    }
+
+
+    /**
+     * 错误处理
+     * @param $code
+     * @param $message
+     */
+    protected function ajaxError($code,$message){
+        $data = array(
+            'code' => $code,
+            'message' => $message
+        );
+        return response()->json($data);
     }
 
 
@@ -163,6 +190,8 @@ abstract class Controller extends BaseController
             'refer_id'  => $refer_id,
             'is_read'    => 0
         ]);
+
+
     }
 
 
@@ -190,38 +219,55 @@ abstract class Controller extends BaseController
 
 
     /*邮件发送*/
-    protected function sendEmail($to_user_id,$type,$subject,$extData,$force=false){
+    protected function sendEmail($email,$subject,$message){
 
         if(Setting()->get('mail_open') != 1){//关闭邮件发送
             return false;
         }
 
-        $toUser = User::find($to_user_id);
-        if(!$toUser){
-            return false;
-        }
-
-        /*站内消息策略*/
-        if(!in_array($type,explode(",",$toUser->email_notifications)) && !$force){
-            return false;
-        }
-
-
-        $emailData = [
-            'email' => $toUser['email'],
-            'name' => $toUser['name'],
-            'type' => $type,
+        $data = [
+            'email' => $email,
             'subject' => $subject,
-            'data' => $extData,
+            'body' => $message,
         ];
 
 
-        Mail::queue('emails.'.$emailData['type'], $emailData, function($message) use ($emailData)
+        Mail::queue('emails.common', $data, function($message) use ($data)
         {
-            $message->to($emailData['email'],$emailData['name'])->subject($emailData['subject']);
+            $message->to($data['email'])->subject($data['subject']);
         });
 
     }
+
+
+
+
+
+    /**
+     * 业务层计数器
+     * @param $key 计数器key
+     * @param null $step 级数步子
+     * @param int $expiration 有效期
+     * @return Int count
+     */
+    protected function counter($key,$step=null,$expiration=86400){
+
+        $count = Cache::get($key,0);
+        /*直接获取值*/
+        if( $step === null ){
+            return $count;
+        }
+
+        $count = $count + $step;
+
+        Cache::put($key,$count,$expiration);
+
+        return $count;
+
+    }
+
+
+
 
 
 

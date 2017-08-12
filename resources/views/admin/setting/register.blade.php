@@ -9,9 +9,6 @@
             注册设置
             <small>全站注册策略设置</small>
         </h1>
-        <ol class="breadcrumb">
-            <li><a href="{{ route('admin.setting.website') }}"><i class="fa fa-mail-reply"></i> 返回</a></li>
-        </ol>
     </section>
     <section class="content">
         <div class="row">
@@ -27,6 +24,14 @@
                                     <label><input type="radio" name="register_open" value="1" @if(Setting()->get('register_open','1') == 1) checked @endif > 允许 </label>
                                     <label class="ml-20"><input type="radio" name="register_open" value="0" @if(Setting()->get('register_open','1') != 1) checked @endif > 拒绝 </label>
                                 </div>
+                            </div>
+
+
+
+                            <div class="form-group">
+                                <label for="website_url">24小时内同一IP的最大注册用户数目</label>
+                                <span class="text-muted">(设置为0代表不做任何限制)</span>
+                                <input type="text" class="form-control" name="register_limit_num" placeholder="0为不限制" value="{{ old('register_limit_num',Setting()->get('register_limit_num' , 0)) }}"  />
                             </div>
 
                             <div class="form-group">

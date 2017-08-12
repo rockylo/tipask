@@ -133,6 +133,9 @@ class SettingController extends AdminController
             $data = $request->except('_token');
             $data['code_login'] = $request->input('code_login',0);
             $data['code_register'] = $request->input('code_register',0);
+            $data['code_create_question'] = $request->input('code_create_question',0);
+            $data['code_create_article'] = $request->input('code_create_article',0);
+            $data['code_create_answer'] = $request->input('code_create_answer',0);
             foreach($data as $name => $value ){
                 Setting()->set($name,$value);
             }
@@ -209,6 +212,12 @@ class SettingController extends AdminController
             return $this->success(route('admin.setting.seo'),'seo策略设置成功');
         }
         return view('admin.setting.seo');
+    }
+
+
+    /*变量设置*/
+    public function variables(Request $request){
+        return view('admin.setting.variables');
     }
 
 

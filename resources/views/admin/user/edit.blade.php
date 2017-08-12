@@ -14,9 +14,6 @@
             编辑用户
             <small>编辑用户信息</small>
         </h1>
-        <ol class="breadcrumb">
-            <li><a href="{{ route('admin.user.index') }}"><i class="fa fa-mail-reply"></i> 返回</a></li>
-        </ol>
     </section>
     <section class="content">
         <div class="row">
@@ -39,7 +36,7 @@
                                 <label>头像</label>
                                 <input type="file" name="avatar" />
                                 <div style="margin-top: 10px;">
-                                    <img src="{{ route('website.image.avatar',['avatar_name'=>$user->id.'_big']) }}" width="100"/>
+                                    <img src="{{ get_user_avatar($user->id,'big') }}" width="100"/>
                                 </div>
                             </div>
 
@@ -115,6 +112,18 @@
                                 <label for="name">自我介绍</label>
                                 <textarea name="description" class="form-control " placeholder="自我介绍">{{ old('description',$user->description) }}</textarea>
                                 @if ($errors->has('description')) <p class="help-block">{{ $errors->first('description') }}</p> @endif
+                            </div>
+
+                            <div class="form-group">
+                                <label>状态</label>
+                                <span class="text-muted">(禁用后用户将不能访问网站)</span>
+                                <div class="radio">
+                                    @foreach(trans_common_status('all') as $key => $status)
+                                        <label>
+                                            <input type="radio" name="status" value="{{ $key }}" @if($user->status === $key) checked @endif /> {{ $status }}
+                                        </label>&nbsp;&nbsp;
+                                    @endforeach
+                                </div>
                             </div>
 
                         </div>

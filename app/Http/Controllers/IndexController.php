@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Article;
+use App\Models\Authentication;
+use App\Models\Category;
 use App\Models\Comment;
 use App\Models\Exchange;
 use App\Models\FriendshipLink;
@@ -15,12 +17,12 @@ use App\Models\Tag;
 use App\Models\Taggable;
 use App\Models\User;
 use App\Models\UserData;
+use App\Models\UserTag;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
-use App\Http\Requests;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\DB;
 
 class IndexController extends Controller
 {
@@ -31,7 +33,6 @@ class IndexController extends Controller
      */
     public function index()
     {
-
         /*热门话题*/
         $hotTags =  Taggable::globalHotTags();
 
@@ -42,28 +43,28 @@ class IndexController extends Controller
 
         /*热门专家*/
         $hotExperts = Cache::remember('hot_experts',Setting()->get('website_cache_time',1),function(){
-            return  UserData::hotExperts(8);
+            return  Authentication::hottest(8);
         });
 
 
         /*热门问题*/
         $newestQuestions = Cache::remember('newest_questions',Setting()->get('website_cache_time',1),function() {
-            return  Question::newest(8);
+            return  Question::newest(0,8);
         });
 
         /*悬赏问题*/
         $rewardQuestions = Cache::remember('reward_questions',Setting()->get('website_cache_time',1),function() {
-            return  Question::reward(8);
+            return  Question::reward(0,8);
         });
 
         /*热门文章*/
         $hotArticles = Cache::remember('hot_articles',Setting()->get('website_cache_time',1),function() {
-            return  Article::hottest(8);
+            return  Article::hottest(0,8);
         });
 
         /*最新文章*/
         $newestArticles = Cache::remember('newest_articles',Setting()->get('website_cache_time',1),function() {
-            return  Article::newest(8);
+            return  Article::newest(0,8);
         });
 
 
@@ -75,7 +76,7 @@ class IndexController extends Controller
 
         /*财富榜*/
 
-        $topCoinUsers = Cache::remember('top_coin_users',Setting()->get('website_cache_time',1),function() {
+        $topCoinUsers = Cache::remember('index_top_coin_users',Setting()->get('website_cache_time',1),function() {
             return  UserData::top('coins',8);
         });
 
@@ -91,7 +92,7 @@ class IndexController extends Controller
 
 
     /*问答模块*/
-    public function ask($filter='newest')
+    public function ask($categorySlug='all',$filter='newest')
     {
 
         $question = new Question();
@@ -100,46 +101,75 @@ class IndexController extends Controller
             abort(404);
         }
 
-        $questions =  call_user_func([$question,$filter]);
+        $currentCategoryId = 0;
+        if( $categorySlug != 'all' ){
+            $category = Category::where("slug","=",$categorySlug)->first();
+            if(!$category){
+                abort(404);
+            }
+            $currentCategoryId = $category->id;
+        }
+
+        $questions =  call_user_func([$question,$filter] , $currentCategoryId );
 
         /*热门话题*/
-        $hotTags =  Taggable::globalHotTags();
+        $hotTags =  Taggable::globalHotTags('questions');
 
-
-
-        $topAnswerUsers = UserData::top('answers',8);
-        return view('theme::home.ask')->with('questions',$questions)
-            ->with('topAnswerUsers',$topAnswerUsers)
-            ->with('hotTags',$hotTags)
-            ->with('filter',$filter);
+        $categories = load_categories('questions');
+        $hotUsers = Cache::remember('ask_hot_users',Setting()->get('website_cache_time',1),function() {
+            return  UserData::activities(8);
+        });
+        return view('theme::home.ask')->with(compact('questions','hotUsers','hotTags','filter','categories','currentCategoryId','categorySlug'));
     }
 
 
-    public function blog($filter='recommended')
+    public function blog($categorySlug='all', $filter='newest')
     {
         $article = new Article();
         if(!method_exists($article,$filter)){
             abort(404);
         }
 
-        $articles = call_user_func([$article,$filter]);
+        $currentCategoryId = 0;
+        if( $categorySlug != 'all' ){
+            $category = Category::where("slug","=",$categorySlug)->first();
+            if(!$category){
+                abort(404);
+            }
+            $currentCategoryId = $category->id;
+        }
+
+        $articles = call_user_func([$article,$filter],$currentCategoryId);
+
+        /*热门文章*/
+        $hotArticles = Cache::remember('hot_articles',Setting()->get('website_cache_time',1),function() {
+            return  Article::recommended(0,8);
+        });
 
         $hotUsers = UserData::activeInArticles();
         /*热门话题*/
-        $hotTags =  Taggable::globalHotTags();
+        $hotTags =  Taggable::globalHotTags('articles');
+        $categories = load_categories('articles');
 
-
-
-        return view('theme::home.blog')->with('articles',$articles)
-                                       ->with('hotUsers',$hotUsers)
-                                       ->with('hotTags',$hotTags)
-                                       ->with('filter',$filter);
+        return view('theme::home.blog')->with(compact('articles','hotUsers','hotTags','filter','categories','currentCategoryId','categorySlug','hotArticles'));
     }
 
-    public function topic()
+    public function topic( $categorySlug='all')
     {
-        $topics = Tag::orderBy('followers','DESC')->paginate(20);
-        return view('theme::home.topic')->with('topics',$topics);
+
+        $currentCategoryId = 0;
+        if( $categorySlug != 'all' ){
+            $category = Category::where("slug","=",$categorySlug)->first();
+            if(!$category){
+                abort(404);
+            }
+            $currentCategoryId = $category->id;
+        }
+
+        $categories = load_categories('tags');
+
+        $topics = Tag::where("category_id","=",$currentCategoryId)->orderBy('followers','DESC')->paginate(20);
+        return view('theme::home.topic')->with(compact('topics','categories','currentCategoryId','categorySlug'));
     }
 
 
@@ -150,17 +180,35 @@ class IndexController extends Controller
 
     }
 
-    public function experts(){
-        $experts = UserData::leftJoin('users', 'users.id', '=', 'user_data.user_id')
-            ->where('users.status','>',0)
-            ->where('user_data.authentication_status','=',1)
-            ->orderBy('user_data.answers','DESC')
-            ->orderBy('user_data.articles','DESC')
-            ->orderBy('users.updated_at','DESC')
-            ->select('users.id','users.name','users.title','user_data.coins','user_data.credits','user_data.followers','user_data.supports','user_data.answers','user_data.articles','user_data.authentication_status')
-            ->paginate(16);
-        return view('theme::home.expert')->with('experts',$experts);
+    public function experts(Request $request,$categorySlug='all',$provinceId='all'){
+        $categories = load_categories('experts');
+        $hotProvinces = Cache::remember('hot_expert_cities',Setting()->get('website_cache_time',1),function() {
+            return  Authentication::select('province', DB::raw('COUNT(user_id) as total'))->groupBy('province')->orderBy('total','desc')->get();
+        });
+        $query = Authentication::leftJoin('user_data', 'user_data.user_id', '=', 'authentications.user_id')->where('user_data.authentication_status','=',1);
+        $categoryId = 0;
+        if( $categorySlug != 'all' ){
+            $category = Category::where("slug","=",$categorySlug)->first();
+            if($category){
+                $categoryId = $category->id;
+                $query->where("authentications.category_id","=",$categoryId);
+            }
+        }
 
+        if($provinceId != 'all'){
+            $query->where("authentications.province","=",$provinceId);
+        }
+
+        $word = $request->input('word','');
+        if($word){
+            $query->where("authentications.real_name",'like',"$word%");
+        }
+        $experts = $query->orderBy('user_data.answers','DESC')
+            ->orderBy('user_data.articles','DESC')
+            ->orderBy('authentications.updated_at','DESC')
+            ->select('authentications.user_id','authentications.real_name','authentications.description','authentications.title','user_data.coins','user_data.credits','user_data.followers','user_data.supports','user_data.answers','user_data.articles','user_data.authentication_status')
+            ->paginate(16);
+        return view('theme::home.expert')->with(compact('experts','categories','hotProvinces','categorySlug','categoryId','provinceId','word'));
     }
 
 

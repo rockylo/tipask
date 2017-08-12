@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Account;
 
 use App\Models\Answer;
 use App\Models\Article;
+use App\Models\Comment;
 use App\Models\Support;
+use App\Models\UserTag;
 use Illuminate\Http\Request;
 
 use App\Http\Requests;
@@ -26,6 +28,8 @@ class SupportController extends Controller
             $source  = Answer::find($source_id);
         }elseif($source_type === 'article'){
             $source  = Article::find($source_id);
+        }elseif($source_type === 'comment'){
+            $source  = Comment::find($source_id);
         }
 
         if(!$source){
@@ -56,6 +60,11 @@ class SupportController extends Controller
         if($support){
             $source->increment('supports');
             $source->user->userData->increment('supports');
+            if($source_type=='answer'){
+                UserTag::multiIncrement($source->user_id,$source->question->tags()->get(),'supports');
+            }else if($source_type=='article'){
+                UserTag::multiIncrement($source->user_id,$source->tags()->get(),'supports');
+            }
         }
 
         return response('success');

@@ -1,6 +1,6 @@
 @extends('theme::layout.public')
 
-@section('seo_title')发起提问 - {{ Setting()->get('website_name') }}>@endsection
+@section('seo_title')发起提问 - {{ Setting()->get('website_name') }} @endsection
 
 @section('css')
     <link href="{{ asset('/static/js/summernote/summernote.css')}}" rel="stylesheet">
@@ -38,25 +38,49 @@
                 <div id="question_editor">{!! old('description','') !!}</div>
                 @if($errors->has('description')) <p class="help-block">{{ $errors->first('description') }}</p> @endif
             </div>
-
-            <div class="form-group">
-                <label for="select_tags">添加话题</label>
-                <select id="select_tags" name="select_tags" class="form-control" multiple="multiple" ></select>
-            </div>
-            <div class="row mt-20">
-                <div class="col-md-8">
-                    <div class="checkbox pull-left">
-                        悬赏
-                        <select name="price">
-                            <option selected="selected" value="0">0</option><option value="3">3</option><option value="5">5</option><option value="10">10</option><option value="15">15</option><option value="30">30</option><option value="50">50</option><option value="80">80</option><option value="100">100</option>
-                        </select> 金币
-                        <span class="span-line">|</span>
-                        <label>
-                            <input type="checkbox" name="hide" value="1" /> 匿名
-                        </label>
+            <div class="row">
+                <div class="col-md-5">
+                    <div class="form-group">
+                        <select name="category_id" id="category_id" class="form-control">
+                            <option value="0">请选择分类</option>
+                            @include('admin.category.option',['type'=>'questions','select_id'=>old('category_id',0)])
+                        </select>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-7">
+                    <div class="form-group">
+                        <select id="select_tags" name="select_tags" class="form-control" multiple="multiple" >
+                            @foreach(array_filter(explode(",",old('select_tags',''))) as $tag)
+                                <option selected="selected">{{ $tag }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-20">
+                <div class="col-xs-12 col-md-11">
+                    <ul class="list-inline">
+                        @if( Setting()->get('code_create_question') )
+                        <li class="pull-right">
+                            <div class="form-group @if ($errors->first('captcha')) has-error @endif">
+                                <input type="text" class="form-control" name="captcha" required="" placeholder="验证码" />
+                                @if ($errors->first('captcha'))
+                                    <span class="help-block">{{ $errors->first('captcha') }}</span>
+                                @endif
+                                <div class="mt-10"><a href="javascript:void(0);" id="reloadCaptcha"><img src="{{ captcha_src()}}"></a></div>
+                            </div>
+                        </li>
+                        @endif
+                        <li>
+                            <select name="price">
+                                <option selected="selected" value="0">0</option><option value="3">3</option><option value="5">5</option><option value="10">10</option><option value="15">15</option><option value="30">30</option><option value="50">50</option><option value="80">80</option><option value="100">100</option>
+                            </select>&nbsp;金币
+                        </li>
+                        <li><input type="checkbox" name="hide" value="1" />&nbsp;匿名</li>
+                    </ul>
+                </div>
+                <div class="col-xs-12 col-md-1">
                     <input type="hidden" id="question_editor_content"  name="description" value=""  />
                     <button type="submit" class="btn btn-primary pull-right" >发布问题</button>
                 </div>
@@ -119,6 +143,7 @@
             $(".widget-suggest-close").click(function(){
                 $(".widget-suggest").addClass("hide");
             });
+
 
         });
     </script>

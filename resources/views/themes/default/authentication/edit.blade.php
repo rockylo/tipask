@@ -1,6 +1,6 @@
 @extends('theme::layout.public')
 
-@section('seo_title')行家认证 - {{ Setting()->get('website_name') }}@endsection
+@section('seo_title')专家认证 - {{ Setting()->get('website_name') }}@endsection
 
 
 @section('css')
@@ -14,7 +14,7 @@
         @include('theme::layout.profile_menu')
 
         <div id="main" class="settings col-md-10 form-horizontal">
-            <h2 class="h3 post-title">行家认证 <small>修改认证资料</small></h2>
+            <h2 class="h3 post-title">专家认证 <small>修改认证资料</small></h2>
             <div class="row mt-30">
                 <div class="col-md-8">
                     <form name="authForm" id="authentication_form" enctype="multipart/form-data" action="{{ route('auth.authentication.edit')}}" method="POST">
@@ -30,6 +30,55 @@
                                 @endif
                             </div>
                         </div>
+                        <div class="form-group">
+                            <label class="control-label col-sm-3">性别</label>
+                            <div class="col-sm-9">
+                                <label class="radio-inline"><input name="gender" type="radio" value="1" @if( old('gender',$authentication->gender) == 1 ) checked @endif > 男</label>
+                                <label class="radio-inline"><input name="gender" type="radio" value="2" @if( old('gender',$authentication->gender)==2 ) checked @endif> 女</label>
+                                <label class="radio-inline"><input name="gender" type="radio" value="0" @if( old('gender',$authentication->gender)==0 ) checked @endif> 保密</label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="setting-city" class="control-label col-sm-3">所在城市</label>
+                            <div class="col-sm-4">
+                                <select class="form-control" name="province" id="province">
+                                    <option>请选择省份</option>
+                                    @foreach($areaData['provinces'] as $province)
+                                        <option value="{{ $province->id }}"  @if( old('province',$authentication->province) == $province->id) selected @endif>{{ $province->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-sm-5">
+                                <select class="form-control" name="city" id="city">
+                                    <option>请选择城市</option>
+                                    @foreach($areaData['cities'] as $city)
+                                        <option value="{{ $city->id }}" @if( old('city',$authentication->city) == $city->id) selected @endif >{{ $city->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group @if ($errors->first('title')) has-error @endif">
+                            <label for="name" class="control-label col-sm-3">身份职业</label>
+                            <div class="col-sm-9">
+                                <input name="title" id="title" type="text" maxlength="32" placeholder="例如：汽车制造 / 产品设计师 / 登山爱好者" class="form-control" value="{{ old('title',$authentication->title) }}" />
+                                @if ($errors->first('title'))
+                                    <span class="help-block">{{ $errors->first('title') }}</span>
+                                @endif
+                            </div>
+                        </div>
+
+                        <div class="form-group @if ($errors->first('description')) has-error @endif">
+                            <label for="setting-description" class="control-label col-sm-3">自我介绍</label>
+                            <div class="col-sm-9">
+                                <textarea name="description" id="setting-description" class="form-control" rows="6">{{ old('description',$authentication->description) }}</textarea>
+                                @if ($errors->first('description'))
+                                    <span class="help-block">{{ $errors->first('description') }}</span>
+                                @endif
+                            </div>
+                        </div>
+
                         <div class="form-group @if ($errors->first('id_card')) has-error @endif">
                             <label for="id_card" class="control-label col-sm-3 required">身份照号码</label>
                             <div class="col-sm-9">
@@ -69,7 +118,7 @@
                                 @endif
                             </div>
                         </div>
-                        <div class="form-group @if ($errors->first('skill_image')) has-error @endif">
+                        <div class="form-group @if ($errors->first('skill_image')) has-error @endif ">
                             <label id="skill_image" class="control-label col-sm-3 required">专业性证明</label>
                             <div class="col-sm-9">
                                 <input  class="form-control" type="file" name="skill_image" />
@@ -77,7 +126,7 @@
                                     <span class="help-block">{{ $errors->first('skill_image') }}</span>
                                 @else
                                     <div class="help-block">
-                                        1.请上传您的工卡、单位证明、资格证书、获奖证书等一切可证明您行家身份的材料照片<br />
+                                        1.请上传您的工卡、单位证明、资格证书、获奖证书等一切可证明您专家身份的材料照片<br />
                                         2.照片要求格式为JPG/JPEG/GIF/PNG，大小不要超过2M
                                     </div>
                                 @endif
@@ -141,7 +190,11 @@
                 $("#tags").val($("#select_tags").val());
             });
 
-
+            /*加载省份城市*/
+            $("#province").change(function(){
+                var province_id = $(this).val();
+                $("#city").load("{{ url('ajax/loadCities') }}/"+province_id);
+            });
         });
     </script>
 @endsection

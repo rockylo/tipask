@@ -7,9 +7,10 @@
  */
 
 return [
-    'version' => 'Tipask3.0',
-    'release' => '20160725',
+    'version' => 'Tipask3.2',
+    'release' => '20170412',
     'user_cache_time' => 1, //用户数据缓存时间单位分钟
+    'user_invite_limit' => 10,//用户邀请回答限制数
     'admin' => [
         'page_size' => 15,  //后台分页列表显示数目
     ],
@@ -23,6 +24,9 @@ return [
         'answer_adopted' => '回答被采纳',
         'create_article' => '发表了文章',
         'exchange' => '兑换商品',
+        'charge' => '金币充值',
+        'reward_user' => '系统奖励',
+        'punish_user' => '金币充值',
     ],
     'notification_types' =>[
         'answer'  => '回答了问题',
@@ -49,6 +53,13 @@ return [
     'mail_drivers' => [
         'smtp' => '连接 SMTP 服务器发送',
         'sendmail' => '通过sendmail方式进行发送',
+    ],
+    'category_types' => [
+        'questions' => '问题',
+        'articles' => '文章',
+        'tags' => '话题',
+        'experts' => '专家',
     ]
+
 
 ];

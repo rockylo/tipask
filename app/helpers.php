@@ -30,6 +30,31 @@ if (! function_exists('trans_goods_post_type')) {
 
 }
 
+if (! function_exists('trans_gender_name')) {
+
+    function trans_gender_name($post_type){
+        $map = [
+            0 => '保密',
+            1 => '男',
+            2 => '女',
+        ];
+
+        if($post_type==='all'){
+            return $map;
+        }
+
+
+        if(isset($map[$post_type])){
+            return $map[$post_type];
+        }
+
+        return '';
+
+    }
+
+}
+
+
 /*行家认证状态文字定义*/
 if (! function_exists('trans_authentication_status')) {
 
@@ -88,6 +113,7 @@ if (! function_exists('trans_common_status')) {
         $map = [
             0 => '待审核',
             1 => '已审核',
+           -1 => '已禁言'
         ];
 
         if($status==='all'){
@@ -141,6 +167,16 @@ if (! function_exists('Setting')) {
 }
 
 
+/*数据库Category表操作*/
+if (! function_exists('load_categories')) {
+
+    function load_categories( $type = 'all' ){
+        return app('App\Models\Category')->loadFromCache($type);
+    }
+
+}
+
+
 /*数据库area地区表操作*/
 if (! function_exists('Area')) {
 
@@ -172,7 +208,7 @@ if( ! function_exists('get_credit_message')){
             $messages[] = '经验 '.integer_string($credits);
         }
         if( $coins != 0 ){
-            $messages[] = '金币 '.integer_string($credits);
+            $messages[] = '金币 '.integer_string($coins);
         }
         return implode("，",$messages);
     }
@@ -222,6 +258,39 @@ if( ! function_exists('parse_seo_template')){
         return $seo_template;
     }
 }
+
+/*生成头像图片地址*/
+if(! function_exists('get_user_avatar')){
+    function get_user_avatar($user_id,$size='middle',$extension='jpg'){
+        return route('website.image.avatar',['avatar_name'=>$user_id.'_'.$size.'.'.$extension]);
+    }
+}
+
+
+/*常见的正则判断*/
+
+/*邮箱判断*/
+if( !function_exists('is_email') ){
+    function is_email($email){
+        $reg = "/^\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$/";
+        if( preg_match($reg,$email) ){
+            return true;
+        }
+        return false;
+    }
+}
+
+/*手机号码判断*/
+if( !function_exists('is_mobile') ){
+    function is_mobile($mobile){
+        $reg = "/^1[34578]\d{9}$/";
+        if( !preg_match($reg,$mobile) ){
+            return false;
+        }
+        return true;
+    }
+}
+
 
 
 

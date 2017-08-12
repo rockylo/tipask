@@ -10,6 +10,7 @@ use Illuminate\Contracts\Auth\Registrar;
 use Illuminate\Http\Request;
 
 use App\Http\Requests;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
@@ -34,7 +35,7 @@ class UserController extends Controller
             $request->flashOnly('email');
 
             $validateRules = [
-                'email' => 'required|email',
+                'email' => 'required|min:8|max:128',
                 'password' => 'required|min:6'
             ];
 
@@ -47,7 +48,7 @@ class UserController extends Controller
 
             /*只接收email和password的值*/
             $credentials = $request->only('email', 'password');
-            
+
             /*根据邮箱地址和密码进行认证*/
             if ($this->auth->attempt($credentials, $request->has('remember')))
             {
@@ -58,7 +59,7 @@ class UserController extends Controller
                 }
 
                 /*认证成功后跳转到首页*/
-                return redirect()->to(route('website.index'));
+                return redirect()->intended(route('website.index'));
 
             }
 
@@ -85,6 +86,14 @@ class UserController extends Controller
         /*注册是否开启*/
         if(!Setting()->get('register_open',1)){
             return $this->showErrorMsg(route('website.index'),'管理员已关闭了网站的注册功能！');
+        }
+
+        /*防灌水检查*/
+        if( Setting()->get('register_limit_num') > 0 ){
+            $registerCount = $this->counter('register_number_'.md5($request->ip()));
+            if( $registerCount > Setting()->get('register_limit_num')){
+                return $this->showErrorMsg(route('website.index'),'您的当前的IP已经超过当日最大注册数目，如有疑问请联系管理员');
+            }
         }
 
         /*注册表单处理*/
@@ -124,8 +133,14 @@ class UserController extends Controller
                 'action'=> 'register'
             ]);
 
-          $this->sendEmail($user->id,'register','欢迎注册'.Setting()->get('website_name').',请激活您注册的邮箱！',$emailToken,true);
+            if($emailToken){
+                $subject = '欢迎注册'.Setting()->get('website_name').',请激活您注册的邮箱！';
+                $content = "「".$request->user()->name."」您好，请激活您在 ".Setting()->get('website_name')." 的注册邮箱！<br /> 请在1小时内点击该链接激活注册账号 → ".route('auth.email.verifyToken',['action'=>$emailToken->action,'token'=>$emailToken->token])."<br />如非本人操作，请忽略此邮件！";
+                $this->sendEmail($emailToken->email,$subject,$content);
+            }
 
+            /*记录注册ip*/
+            $this->counter('register_number_'.md5($request->ip()) , 1 );
 
             return $this->success(route('website.index'),$message);
         }
@@ -146,14 +161,17 @@ class UserController extends Controller
                 'captcha' => 'required|captcha'
             ]);
 
-            $emailToken = EmailToken::createAndSend([
-                'email' => $request->input('email'),
-                'action' => 'findPassword',
-                'name'=>Setting()->get('website_name').'用户',
-                'subject' => Setting()->get('website_name').'找回密码',
+            $emailToken = EmailToken::create([
+                'email' =>  $request->input('email'),
                 'token' => EmailToken::createToken(),
+                'action'=> 'findPassword'
             ]);
 
+            if($emailToken){
+                $subject = Setting()->get('website_name').' 找回密码通知';
+                $content = "如果您在 ".Setting()->get('website_name')."的密码丢失，请点击下方链接找回 → ".route('auth.user.findPassword',['token'=>$emailToken->token])."<br />如非本人操作，请忽略此邮件！";
+                $this->sendEmail($emailToken->email,$subject,$content);
+            }
 
             return view("theme::account.forgetPassword")->with('success','ok')->with('email',$request->input('email'));
 

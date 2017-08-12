@@ -1,19 +1,25 @@
 @extends('theme::layout.public')
-
-@section('seo_title')话题 - 第{{ $topics->currentPage() }}页 - {{ Setting()->get('website_name') }}@endsection
-
-@section('css')
-    <link href="{{ asset('/css/default/topic.css')}}" rel="stylesheet" />
-@endsection
-
+@section('seo_title')话题 @if($topics->currentPage()>1)- 第{{ $topics->currentPage() }}页 @endif - {{ Setting()->get('website_name') }}@endsection
 @section('content')
-        <h1 class="h3">话题<br><small>话题是最有效的内容组织形式，正确的使用话题能更快的发现和解决你的问题</small></h1>
+    <p class="mt-10">话题不仅能组织和归类你的内容，还能关联相似的内容。正确的使用话题将让你的问题被更多人发现和解决。</p>
+    @if( $categories )
+            <div class="widget-category clearfix">
+                <div class="col-sm-12">
+                    <ul class="list">
+                        <li><a href="{{ route('website.topic') }}">全部</a></li>
+                        @foreach( $categories as $category )
+                            <li @if( $category->id == $currentCategoryId ) class="active" @endif ><a href="{{ route('website.topic',['category_slug'=>$category->slug]) }}">{{ $category->name }}</a></li>
+                        @endforeach
+                    </ul>
+                </div>
+            </div>
+        @endif
         <div class="row tag-list mt-20">
             @foreach($topics as $topic)
             <section class="topic-list-item col-md-3">
                 <div class="widget-topic">
                     <h2 class="h4">
-                        <a href="{{ route('ask.tag.index',['name'=>$topic->name]) }}" @if($topic->logo) class="tag-logo" style="background-image: url({{ route('website.image.show',['image_name'=>$topic->logo]) }});" @endif>{{ $topic->name }}</a>
+                        <a href="{{ route('ask.tag.index',['id'=>$topic->id]) }}" @if($topic->logo) class="tag-logo" style="background-image: url({{ route('website.image.show',['image_name'=>$topic->logo]) }});" @endif>{{ $topic->name }}</a>
                     </h2>
                     <p>
                         @if($topic->description)

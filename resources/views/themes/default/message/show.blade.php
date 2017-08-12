@@ -30,7 +30,7 @@
                         <div class="stream-wrap media">
                             <div class="pull-left">
                                 <a href="{{ route('auth.space.index',['id'=>$message->from_user_id]) }}" target="_blank">
-                                    <img class="media-object avatar-40" src="{{ route('website.image.avatar',['avatar_name'=>$message->from_user_id.'_middle']) }}" alt="我">
+                                    <img class="media-object avatar-40" src="{{ get_user_avatar($message->from_user_id) }}" alt="我">
                                 </a>
                             </div>
                             <div class="media-body">
@@ -47,12 +47,12 @@
                        @else
                         <div class="stream-wrap media">
                             <div class="pull-left">
-                                <a href="{{ route('auth.space.index',['id'=>$message->to_from_id]) }}" target="_blank">
-                                    <img class="media-object avatar-40" src="{{ route('website.image.avatar',['avatar_name'=>$message->from_user_id.'_middle']) }}" alt="{{ $toUser->name }}">
+                                <a href="{{ route('auth.space.index',['id'=>$message->from_user_id]) }}" target="_blank">
+                                    <img class="media-object avatar-40" src="{{ get_user_avatar($message->from_user_id) }}" alt="{{ $toUser->name }}">
                                 </a>
                             </div>
                             <div class="media-body">
-                                <a target="_blank" href="{{ route('auth.space.index',['id'=>$message->to_from_id]) }}"> {{ $toUser->name }}</a> :
+                                <a target="_blank" href="{{ route('auth.space.index',['id'=>$message->from_user_id]) }}"> {{ $toUser->name }}</a> :
                                 <div class="full-text fmt">{{ $message->content }}</div>
                                 <div class="meta mt-10">
                                     <span class="text-muted">{{ timestamp_format($message->created_at) }} </span>

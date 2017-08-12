@@ -21,6 +21,9 @@ class ArticleController extends AdminController
 
         $query = Article::query();
 
+        $filter['category_id'] = $request->input('category_id',-1);
+
+
         /*提问人过滤*/
         if( isset($filter['user_id']) &&  $filter['user_id'] > 0 ){
             $query->where('user_id','=',$filter['user_id']);
@@ -39,6 +42,11 @@ class ArticleController extends AdminController
         /*问题状态过滤*/
         if( isset($filter['status']) && $filter['status'] > -1 ){
             $query->where('status','=',$filter['status']);
+        }
+
+        /*分类过滤*/
+        if( $filter['category_id']> 0 ){
+            $query->where('category_id','=',$filter['category_id']);
         }
 
 
@@ -80,6 +88,18 @@ class ArticleController extends AdminController
         return $this->success(route('admin.article.index').'?status=0','文章审核成功');
 
     }
+
+    /*修改分类*/
+    public function changeCategories(Request $request){
+        $ids = $request->input('ids','');
+        $categoryId = $request->input('category_id',0);
+        if($ids){
+            Article::whereIn('id',explode(",",$ids))->update(['category_id'=>$categoryId]);
+        }
+        return $this->success(route('admin.article.index'),'分类修改成功');
+    }
+
+
 
     /**
      * 删除文章

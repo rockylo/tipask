@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Models;
+use App\Models\Relations\MorphManyTagsTrait;
 use Illuminate\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Auth\Passwords\CanResetPassword;
@@ -18,7 +19,7 @@ class User extends Model implements AuthenticatableContract,
     CanResetPasswordContract,
     HasRoleAndPermissionContract
 {
-    use Authenticatable, CanResetPassword,HasRoleAndPermission;
+    use Authenticatable, CanResetPassword,HasRoleAndPermission,MorphManyTagsTrait;
 
     /**
      * The database table used by the model.
@@ -50,8 +51,7 @@ class User extends Model implements AuthenticatableContract,
             }
         });
         static::deleted(function($user){
-            /*删除角色管理*/
-            $user->roles()->delete();
+
             /*删除用户扩展信息*/
             $user->userData()->delete();
             $user->userOauth()->delete();
@@ -78,10 +78,16 @@ class User extends Model implements AuthenticatableContract,
             /*删除积分兑换*/
             $user->exchanges()->delete();
 
+            /*删除统计标签*/
+            $user->userTags()->delete();
+
             /*删除问题邀请*/
             $user->questionInvitations()->delete();
             /*删除评论*/
             $user->comments()->delete();
+
+            /*删除角色管理*/
+            $user->detachAllRoles();
 
             if(Setting()->get('xunsearch_open',0) == 1) {
                 App::offsetGet('search')->delete($user);
@@ -157,6 +163,9 @@ class User extends Model implements AuthenticatableContract,
         return $this->hasOne('App\Models\UserData');
     }
 
+    public function userTag(){
+        return $this->hasMany('App\Models\UserTag');
+    }
 
     public function userOauth(){
         return $this->hasMany('App\Models\UserOauth');
@@ -253,7 +262,24 @@ class User extends Model implements AuthenticatableContract,
         return $this->hasMany('App\Models\Exchange');
     }
 
+    /*用户统计标签*/
+    public function userTags(){
+        return $this->hasMany('App\Models\UserTag','user_id');
+    }
 
+
+    public function hotTags(){
+        $hotTagIds = $this->userTags()->select("tag_id")->distinct()->orderBy('supports','desc')->orderBy('answers','desc')->orderBy('created_at','desc')->take(5)->lists('tag_id');
+        $tags = [];
+        foreach($hotTagIds as $hotTagId){
+            $tag = Tag::find($hotTagId);
+            if($tag){
+                $tags[] = $tag;
+            }
+
+        }
+        return $tags;
+    }
 
 
     /*是否回答过问题*/
@@ -290,13 +316,13 @@ class User extends Model implements AuthenticatableContract,
         return false;
     }
 
-
-
-
-
-
-
-
+    /*判断用户是否开启了邮件通知*/
+    public function allowedEmailNotify($type){
+        if(!in_array($type,explode(",",$this->email_notifications))){
+            return false;
+        }
+        return true;
+    }
 
 
 

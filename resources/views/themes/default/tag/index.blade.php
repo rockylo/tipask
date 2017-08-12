@@ -23,16 +23,16 @@
                     </div>
                 </div>
                 @if($tag->summary)
-                <p class="tag-header-summary">{{ $tag->summary }}...<a href="{{ route('ask.tag.index',['name'=>$tag->name,'source_type'=>'details']) }}">[ 百科 ]</a></p>
+                <p class="tag-header-summary">{{ $tag->summary }}...<a href="{{ route('ask.tag.index',['id'=>$tag->id,'source_type'=>'details']) }}">[ 百科 ]</a></p>
                 @else
                 <p class="tag-header-summary">暂无介绍</p>
                 @endif
             </section>
 
             <ul class="nav nav-tabs nav-tabs-zen">
-                <li @if($source_type==='questions') class="active" @endif ><a href="{{ route('ask.tag.index',['name'=>$tag->name]) }}">问答</a></li>
-                <li @if($source_type==='articles') class="active" @endif ><a href="{{ route('ask.tag.index',['name'=>$tag->name,'source_type'=>'articles']) }}">文章</a></li>
-                <li @if($source_type==='details') class="active" @endif ><a href="{{ route('ask.tag.index',['name'=>$tag->name,'source_type'=>'details']) }}">百科</a></li>
+                <li @if($source_type==='questions') class="active" @endif ><a href="{{ route('ask.tag.index',['id'=>$tag->id]) }}">问答</a></li>
+                <li @if($source_type==='articles') class="active" @endif ><a href="{{ route('ask.tag.index',['id'=>$tag->id,'source_type'=>'articles']) }}">文章</a></li>
+                <li @if($source_type==='details') class="active" @endif ><a href="{{ route('ask.tag.index',['id'=>$tag->id,'source_type'=>'details']) }}">百科</a></li>
             </ul>
             <div class="tab-content">
                 <div class="stream-list">
@@ -40,7 +40,7 @@
                         @foreach($sources as $question)
                             <section class="stream-list-item">
                                 <div class="qa-rank">
-                                    <div class="answers">
+                                    <div class="answers @if($question->status===2) solved @elseif($question->answers>0) answered @endif ">
                                         {{ $question->answers }}<small>回答</small>
                                     </div>
                                     <div class="views hidden-xs">
@@ -59,7 +59,7 @@
                                     @if($question->tags)
                                         <ul class="taglist-inline ib">
                                             @foreach($question->tags as $tag)
-                                                <li class="tagPopup"><a class="tag" href="{{ route('ask.tag.index',['name'=>$tag->name]) }}">{{ $tag->name }}</a></li>
+                                                <li class="tagPopup"><a class="tag" href="{{ route('ask.tag.index',['id'=>$tag->id]) }}">{{ $tag->name }}</a></li>
                                             @endforeach
                                         </ul>
                                     @endif
@@ -86,7 +86,7 @@
                                         </li>
                                         <li>
                                             <a href="{{ route('auth.space.index',['user_id'=>$article->user_id]) }}">
-                                                <img class="avatar-20 mr-10 hidden-xs" src="{{ route('website.image.avatar',['avatar_name'=>$article->user_id.'_small']) }}" alt="{{ $article->user->name }}"> {{ $article->user->name }}
+                                                <img class="avatar-20 mr-10 hidden-xs" src="{{ get_user_avatar($article->user_id,'small') }}" alt="{{ $article->user->name }}"> {{ $article->user->name }}
                                             </a>
                                             发布于 {{ timestamp_format($article->created_at) }}
                                         </li>
@@ -115,7 +115,7 @@
                 <h2 class="h4 widget-box__title">相关标签</h2>
                 <ul class="taglist-inline multi">
                     @foreach($tag->relations() as $relationTag)
-                    <li class="tagPopup"><a class="tag" href="{{ route('ask.tag.index',['name'=>$relationTag->name]) }}">{{ $relationTag->name }}</a></li>
+                        <li class="tagPopup"><a class="tag" href="{{ route('ask.tag.index',['id'=>$relationTag->id]) }}">{{ $relationTag->name }}</a></li>
                     @endforeach
                 </ul>
             </div>
@@ -126,7 +126,7 @@
                     @foreach($followers as $follower)
                         <li class="media  widget-user-item ">
                             <a href="{{ route('auth.space.index',['user_id'=>$follower->user_id]) }}" class="user-card pull-left" target="_blank">
-                                <img class="avatar-50"  src="{{ route('website.image.avatar',['avatar_name'=>$follower->user_id.'_middle']) }}" alt="{{ $follower->user->name }}"></a>
+                                <img class="avatar-50"  src="{{ get_user_avatar($follower->user_id) }}" alt="{{ $follower->user->name }}"></a>
                             </a>
                             <div class="media-object">
                                 <strong><a href="{{ route('auth.space.index',['user_id'=>$follower->user_id]) }}" target="_blank">{{ $follower->user->name }}</a></strong>

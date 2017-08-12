@@ -15,23 +15,27 @@ Route::Group(['namespace'=>'Installer','middleware'=>'installer'],function(){
 Route::get('/',['as'=>'website.index','uses'=>'IndexController@index']);
 
 /*问答*/
-Route::get('/questions/{filter?}',['as'=>'website.ask','uses'=>'IndexController@ask'])->where(['filter'=>'(newest|hottest|reward|unAnswered)']);
+Route::get('/questions/{category_name?}/{filter?}',['as'=>'website.ask','uses'=>'IndexController@ask'])->where(['filter'=>'(newest|hottest|reward|unAnswered)']);
 
 /*标签*/
-Route::get('/topics',['as'=>'website.topic','uses'=>'IndexController@topic']);
+Route::get('/topics/{category_name?}',['as'=>'website.topic','uses'=>'IndexController@topic']);
 
 /*文章*/
-Route::get('/articles/{filter?}',['as'=>'website.blog','uses'=>'IndexController@blog'])->where(['filter'=>'(recommended|newest|hottest)']);
+Route::get('/articles/{category_name?}/{filter?}',['as'=>'website.blog','uses'=>'IndexController@blog'])->where(['filter'=>'(recommended|newest|hottest)']);
 
 /*用户*/
 Route::get('/users',['as'=>'website.user','uses'=>'IndexController@user']);
 
 /*experts*/
-Route::get('/experts',['as'=>'website.experts','uses'=>'IndexController@experts']);
+Route::get('/experts/{categorySlug?}/{provinceId?}',['as'=>'website.experts','uses'=>'IndexController@experts']);
 
 
 /*积分商城*/
 Route::get('/shop',['as'=>'website.shop','uses'=>'IndexController@shop']);
+
+/*sitemap*/
+Route::get('/sitemap',['as'=>'website.sitemap','uses'=>'SiteMapController@index']);
+
 
 
 
@@ -151,8 +155,8 @@ Route::Group(['namespace'=>'Account'],function(){
     });
 
     /*点赞*/
-    Route::get('support/{source_type}/{source_id}',['as'=>'auth.support.store','uses'=>'SupportController@store'])->where(['source_type'=>'(answer|article)','source_id'=>'[0-9]+']);
-    Route::get('support/check/{source_type}/{source_id}',['as'=>'auth.support.check','uses'=>'SupportController@check'])->where(['source_type'=>'(answer|article)','source_id'=>'[0-9]+']);
+    Route::get('support/{source_type}/{source_id}',['as'=>'auth.support.store','uses'=>'SupportController@store'])->where(['source_type'=>'(answer|article|comment)','source_id'=>'[0-9]+']);
+    Route::get('support/check/{source_type}/{source_id}',['as'=>'auth.support.check','uses'=>'SupportController@check'])->where(['source_type'=>'(answer|article|comment)','source_id'=>'[0-9]+']);
 
 
 
@@ -179,18 +183,22 @@ Route::Group(['namespace'=>'Ask'],function(){
     /*需要登录的模块*/
     Route::Group(['middleware'=>'auth'],function(){
 
-
         /*问题创建*/
         Route::get('question/create',['as'=>'ask.question.create','uses'=>'QuestionController@create']);
-        Route::post('question/store',['middleware' =>'auth','as'=>'ask.question.store','uses'=>'QuestionController@store']);
+        Route::post('question/store',['middleware' =>'ban.user','as'=>'ask.question.store','uses'=>'QuestionController@store']);
 
 
         /*问题修改*/
         Route::get('question/edit/{id}',['as'=>'ask.question.edit','uses'=>'QuestionController@edit'])->where(['id'=>'[0-9]+']);
-        Route::post('question/update',['as'=>'ask.question.update','uses'=>'QuestionController@update']);
+        Route::post('question/update',['middleware' =>'ban.user','as'=>'ask.question.update','uses'=>'QuestionController@update']);
 
         /*追加悬赏*/
         Route::post('question/{id}/appendReward',['as'=>'ask.question.appendReward','uses'=>'QuestionController@appendReward'])->where(['id'=>'[0-9]+']);
+
+        /*邀请回答*/
+        Route::get('question/invite/{question_id}/{to_user_id}',['as'=>'ask.question.invite','uses'=>'QuestionController@invite'])->where(['question_id'=>'[0-9]+','to_user_id'=>'[0-9]+']);
+        Route::any('question/inviteEmail/{question_id}',['as'=>'ask.question.inviteEmail','uses'=>'QuestionController@inviteEmail'])->where(['question_id'=>'[0-9]+']);
+        Route::get('question/{question_id}/invitations/{type}',['as'=>'ask.question.invitations','uses'=>'QuestionController@invitations'])->where(['question_id'=>'[0-9]+','type'=>'(part|all)']);
 
         /*采纳回答*/
         Route::get('answer/adopt/{id}',['as'=>'ask.answer.adopt','uses'=>'AnswerController@adopt'])->where(['id'=>'[0-9]+']);
@@ -203,13 +211,14 @@ Route::Group(['namespace'=>'Ask'],function(){
         Route::post('answer/update/{id}',['as'=>'ask.answer.update','uses'=>'AnswerController@update'])->where(['id'=>'[0-9]+']);
 
         /*评论添加*/
-        Route::post('comment/store',['as'=>'ask.comment.store','uses'=>'CommentController@store']);
+        Route::post('comment/store',['middleware' =>'ban.user','as'=>'ask.comment.store','uses'=>'CommentController@store']);
+
 
     });
 
 
     /*标签首页*/
-    Route::get('topic/{name}/{source_type?}',['as'=>'ask.tag.index','uses'=>'TagController@index'])->where(['source_type'=>'(questions|articles|details)']);
+    Route::get('topic/{id}/{source_type?}',['as'=>'ask.tag.index','uses'=>'TagController@index'])->where(['id'=>'[0-9]+','source_type'=>'(questions|articles|details)']);
 
     /*加载评论*/
     Route::get('{source_type}/{source_id}/comments',['as'=>'ask.comment.show','uses'=>'CommentController@show'])->where(['source_type'=>'(question|answer|article)','source_id'=>'[0-9]+']);
@@ -229,10 +238,9 @@ Route::Group(['namespace'=>'Blog'],function(){
 
         /*文章创建*/
         Route::get('article/create',['as'=>'blog.article.create','uses'=>'ArticleController@create']);
-        Route::post('article/store',['as'=>'blog.article.store','uses'=>'ArticleController@store']);
+        Route::post('article/store',['middleware' =>'ban.user','as'=>'blog.article.store','uses'=>'ArticleController@store']);
         Route::get('article/edit/{id}',['as'=>'blog.article.edit','uses'=>'ArticleController@edit'])->where(['id'=>'[0-9]+']);
-        Route::post('article/update',['as'=>'blog.article.update','uses'=>'ArticleController@update']);
-
+        Route::post('article/update',['middleware' =>'ban.user','as'=>'blog.article.update','uses'=>'ArticleController@update']);
     });
 
 });
@@ -269,7 +277,9 @@ Route::Group(['prefix'=>'admin','namespace'=>'Admin','middleware' =>['auth','aut
     /*用户退出*/
     Route::get('logout',['as'=>'admin.account.logout','uses'=>'AccountController@logout']);
 
-    Route::match(['get','post'],'upgrade',['as'=>'admin.system.upgrade','uses'=>'SystemController@upgrade']);
+    Route::get('system/index',['as'=>'admin.system.index','uses'=>'SystemController@index']);
+    Route::post('system/upgrade',['as'=>'admin.system.upgrade','uses'=>'SystemController@upgrade']);
+    Route::post('system/adjust',['as'=>'admin.system.adjust','uses'=>'SystemController@adjust']);
 
     /*首页*/
     Route::resource('index', 'IndexController', ['only' => ['index']]);
@@ -292,6 +302,8 @@ Route::Group(['prefix'=>'admin','namespace'=>'Admin','middleware' =>['auth','aut
     /*认证管理*/
     Route::post('authentication/destroy',['as'=>'admin.authentication.destroy','uses'=>'AuthenticationController@destroy']);
     Route::post('authentication/verify',['as'=>'admin.authentication.verify','uses'=>'AuthenticationController@verify']);
+    /*修改分类核*/
+    Route::post('authentication/changeCategories',['as'=>'admin.authentication.changeCategories','uses'=>'AuthenticationController@changeCategories']);
     Route::resource('authentication', 'AuthenticationController',['except' => ['show','create','store','destroy']]);
 
 
@@ -315,8 +327,13 @@ Route::Group(['prefix'=>'admin','namespace'=>'Admin','middleware' =>['auth','aut
     /*oauth2.0*/
     Route::any('setting/oauth',['as'=>'admin.setting.oauth','uses'=>'SettingController@oauth']);
 
+    /*财务管理*/
+    Route::resource('credit', 'CreditController',['except' => ['show']]);
+
     /*问题删除*/
     Route::post('question/destroy',['as'=>'admin.question.destroy','uses'=>'QuestionController@destroy']);
+    /*修改分类核*/
+    Route::post('question/changeCategories',['as'=>'admin.question.changeCategories','uses'=>'QuestionController@changeCategories']);
     /*问题审核*/
     Route::post('question/verify',['as'=>'admin.question.verify','uses'=>'QuestionController@verify']);
     /*问题管理*/
@@ -334,6 +351,8 @@ Route::Group(['prefix'=>'admin','namespace'=>'Admin','middleware' =>['auth','aut
     Route::post('article/destroy',['as'=>'admin.article.destroy','uses'=>'ArticleController@destroy']);
     /*文章审核*/
     Route::post('article/verify',['as'=>'admin.article.verify','uses'=>'ArticleController@verify']);
+    /*修改分类核*/
+    Route::post('article/changeCategories',['as'=>'admin.article.changeCategories','uses'=>'ArticleController@changeCategories']);
     /*文章管理*/
     Route::resource('article', 'ArticleController',['only' => ['index','edit','update']]);
 
@@ -347,10 +366,17 @@ Route::Group(['prefix'=>'admin','namespace'=>'Admin','middleware' =>['auth','aut
 
     /*标签删除*/
     Route::post('tag/destroy',['as'=>'admin.tag.destroy','uses'=>'TagController@destroy']);
+    /*修改分类核*/
+    Route::post('tag/changeCategories',['as'=>'admin.tag.changeCategories','uses'=>'TagController@changeCategories']);
+
     /*标签审核*/
     Route::post('tag/verify',['as'=>'admin.tag.verify','uses'=>'TagController@verify']);
     /*标签管理*/
-    Route::resource('tag', 'TagController',['only' => ['index','edit','update']]);
+    Route::resource('tag', 'TagController',['except' => ['show','destroy']]);
+
+
+    /*分类管理*/
+    Route::resource('category', 'CategoryController',['except' => ['show']]);
 
 
 
@@ -391,14 +417,14 @@ Route::get('ajax/unreadNotifications',['as'=>'website.ajax.unreadNotifications',
 Route::get('ajax/loadTags',['as'=>'website.ajax.loadTags','uses'=>'AjaxController@loadTags']);
 
 Route::get('ajax/loadUsers',['middleware' =>'auth','as'=>'website.ajax.loadUsers','uses'=>'AjaxController@loadUsers']);
+Route::get('ajax/loadInviteUsers',['middleware' =>'auth','as'=>'website.ajax.loadInviteUsers','uses'=>'AjaxController@loadInviteUsers']);
 
 /*加载未读私信数目*/
 Route::get('ajax/unreadMessages',['as'=>'website.ajax.unreadMessages','uses'=>'AjaxController@unreadMessages']);
 
 
-Route::get('image/avatar/{avatar_name}',['as'=>'website.image.avatar','uses'=>'ImageController@avatar'])->where(['avatar_name'=>'[0-9]+_(small|middle|big|origin)']);
+Route::get('image/avatar/{avatar_name}',['as'=>'website.image.avatar','uses'=>'ImageController@avatar'])->where(['avatar_name'=>'[0-9]+_(small|middle|big|origin).jpg']);
 Route::get('image/show/{image_name}',['as'=>'website.image.show','uses'=>'ImageController@show']);
-Route::get('www/getList',['as'=>'website.www.getList','uses'=>'ApiController@getList']);
 
 Route::Group(['middleware'=>'auth'],function(){
     Route::post('image/upload',['as'=>'website.image.upload','uses'=>'ImageController@upload']);

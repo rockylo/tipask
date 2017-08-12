@@ -12,11 +12,7 @@
     <section class="content-header">
         <h1>
             编辑话题
-            <small>编辑话题信息</small>
         </h1>
-        <ol class="breadcrumb">
-            <li><a href="{{ route('admin.tag.index') }}"><i class="fa fa-mail-reply"></i> 返回</a></li>
-        </ol>
     </section>
     <section class="content">
         <div class="row">
@@ -41,6 +37,15 @@
                                 </div>
                                 @endif
                             </div>
+
+                            <div class="form-group">
+                                <label>分类</label>
+                                <select name="category_id" class="form-control">
+                                    <option value="0">选择分类</option>
+                                    @include('admin.category.option',['type'=>'tags','select_id'=>$tag->category_id])
+                                </select>
+                            </div>
+
 
                             <div class="form-group @if ($errors->has('summary')) has-error @endif">
                                 <label for="name">简介</label>
@@ -72,7 +77,7 @@
     <script src="{{ asset('/static/js/summernote/lang/summernote-zh-CN.min.js') }}"></script>
     <script type="text/javascript">
         $(function(){
-            set_active_menu('global',"{{ route('admin.tag.index') }}");
+            set_active_menu('manage_content',"{{ route('admin.tag.index') }}");
             $('#tag_editor').summernote({
                 lang: 'zh-CN',
                 height: 300,

@@ -51,29 +51,10 @@
                     </div>
                 </div>
             </div>
-
-            <div class="widget-box clearfix">
-                <h4 class="widget-box-title">推荐行家 <a href="{{ route('website.experts') }}" title="更多">»</a> </h4>
-                @foreach($hotExperts as $expert)
-                    <section class="col-sm-6 col-md-3">
-                        <div class="thumbnail">
-                            <a href="{{ route('auth.space.index',['user_id'=>$expert->id]) }}" target="_blank"><img class="avatar-128" src="{{ route('website.image.avatar',['avatar_name'=>$expert->id.'_big'])}}" alt="{{ $expert->name }}"></a>
-
-                            <div class="caption">
-                                <h4 class="text-center"><a href="{{ route('auth.space.index',['user_id'=>$expert->id]) }}">{{ $expert->name }}</a></h4>
-                                <p class="text-muted text-center">{{ $expert->title }}&nbsp;</p>
-                                <p class="text-center"><a class="btn btn-primary btn-sm" href="{{ route('ask.question.create') }}?to_user_id={{ $expert->id }}">向TA提问</a></p>
-                            </div>
-                        </div>
-                    </section>
-                @endforeach
-            </div>
-
-
             <div class="widget-box">
                 <div class="job-list-item row">
                     <div class="col-md-6">
-                        <h4 class="widget-box-title">最新问题 <a href="{{ route('website.ask',['filter'=>'newest']) }}" target="_blank" title="更多">»</a> </h4>
+                        <h4 class="widget-box-title">最新问题 <a href="{{ route('website.ask',['category_slug'=>'all','filter'=>'newest']) }}" target="_blank" title="更多">»</a> </h4>
                         <ul class="widget-links list-unstyled">
                             @foreach($newestQuestions as $newQuestion)
                             <li class="widget-links-item">
@@ -85,7 +66,7 @@
                         </ul>
                     </div>
                     <div class="col-md-6">
-                        <h4 class="widget-box-title">悬赏问题 <a href="{{ route('website.ask',['filter'=>'reward']) }}" target="_blank" title="更多">»</a></h4>
+                        <h4 class="widget-box-title">悬赏问题 <a href="{{ route('website.ask',['category_slug'=>'all','filter'=>'reward']) }}" target="_blank" title="更多">»</a></h4>
 
                         <ul class="widget-links list-unstyled">
                             @foreach($rewardQuestions as $rewardQuestion)
@@ -101,7 +82,7 @@
             <div class="widget-box">
                 <div class="job-list-item row">
                     <div class="col-md-6">
-                        <h4 class="widget-box-title">热门文章 <a href="{{ route('website.blog',['filter'=>'hottest']) }}" title="更多">»</a></h4>
+                        <h4 class="widget-box-title">热门文章 <a href="{{ route('website.blog',['category_slug'=>'all','filter'=>'hottest']) }}" title="更多">»</a></h4>
                         <ul class="widget-links list-unstyled">
                             @foreach($hotArticles as $hotArticle)
                                 <li class="widget-links-item">
@@ -112,7 +93,7 @@
                         </ul>
                     </div>
                     <div class="col-md-6">
-                        <h4 class="widget-box-title">最新文章 <a href="{{ route('website.blog',['filter'=>'newest']) }}" title="更多">»</a></h4>
+                        <h4 class="widget-box-title">最新文章 <a href="{{ route('website.blog',['category_slug'=>'all','filter'=>'newest']) }}" title="更多">»</a></h4>
                         <ul class="widget-links list-unstyled">
                             @foreach($newestArticles as $newestArticle)
                                 <li class="widget-links-item">
@@ -126,12 +107,35 @@
                 </div>
             </div>
 
+            @if($hotExperts)
+                <div class="widget-box clearfix">
+                    <h4 class="widget-box-title">推荐专家 <a href="{{ route('website.experts') }}" title="更多">»</a></h4>
+                    <div class="row row-horizon">
+                        @foreach($hotExperts as $expert)
+                            <section class="col-sm-6 col-md-3">
+                                <div class="thumbnail">
+                                    <a href="{{ route('auth.space.index',['user_id'=>$expert->user_id]) }}" target="_blank"><img class="avatar-128" src="{{ get_user_avatar($expert->user_id,'big') }}" alt="{{ $expert->real_name }}"></a>
+                                    <div class="caption">
+                                        <h4 class="text-center"><a href="{{ route('auth.space.index',['user_id'=>$expert->user_id]) }}" title="{{ $expert->real_name }}">{{ str_limit($expert->real_name,10,'') }}</a></h4>
+                                        <p class="text-muted text-center" title="{{ $expert->title }}">{{ str_limit($expert->title,16,'') }}&nbsp;</p>
+                                        <p class="text-center"><a class="btn btn-primary btn-sm" href="{{ route('ask.question.create') }}?to_user_id={{ $expert->user_id }}">向TA提问</a></p>
+                                    </div>
+                                </div>
+                            </section>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
         </div>
         <div class="col-xs-12 col-md-3 side">
             <div class="side-alert alert alert-link">
                 <a href="{{ route('ask.question.create') }}" class="btn btn-warning btn-block">我要提问</a>
                 <a href="{{ route('blog.article.create') }}" class="btn btn-primary btn-block">分享经验</a>
             </div>
+
+            @include('theme::layout.auth_menu')
+
             <div class="widget-box">
                 <h4 class="widget-box-title">最新公告</h4>
                 <ul class="widget-links list-unstyled">
@@ -147,7 +151,7 @@
                 <h2 class="h4 widget-box-title">热议话题 <a href="{{ route('website.topic') }}" title="更多">»</a></h2>
                 <ul class="taglist-inline multi">
                     @foreach($hotTags as $hotTag)
-                    <li class="tagPopup"><a class="tag" data-toggle="popover"  href="{{ route('ask.tag.index',['name'=>$hotTag->name]) }}" target="_blank">{{ $hotTag->name }}</a></li>
+                        <li class="tagPopup"><a class="tag" data-toggle="popover"  href="{{ route('ask.tag.index',['id'=>$hotTag->tag_id]) }}" target="_blank">{{ $hotTag->name }}</a></li>
                     @endforeach
                 </ul>
             </div>
@@ -160,7 +164,7 @@
                 <ol class="widget-top10">
                     @foreach($topCoinUsers as $index => $topCoinUser)
                     <li class="text-muted">
-                        <img class="avatar-32" src="{{ route('website.image.avatar',['avatar_name'=>$topCoinUser['id'].'_middle'])}}">
+                        <img class="avatar-32" src="{{ get_user_avatar($topCoinUser['id']) }}">
                         <a href="{{ route('auth.space.index',['user_id'=>$topCoinUser['id']]) }}" class="ellipsis" target="_blank">{{ $topCoinUser['name'] }}</a>
                         <span class="text-muted pull-right">{{ $topCoinUser['coins'] }} 金币</span>
                     </li>
@@ -169,4 +173,5 @@
             </div>
         </div>
     </div>
+
 @endsection

@@ -31,6 +31,10 @@ class UserController extends AdminController
 
         $query = User::query();
 
+        if(isset($filter['user_id']) && $filter['user_id'] > 0){
+            $query->where("id","=",$filter['user_id']);
+        }
+
         /*关键词过滤*/
         if( isset($filter['word']) && $filter['word'] ){
             $query->where(function($subQuery) use ($filter) {
@@ -46,7 +50,7 @@ class UserController extends AdminController
         }
 
         /*状态过滤*/
-        if( isset($filter['status']) && $filter['status'] > -1 ){
+        if( isset($filter['status']) && $filter['status'] > -2 ){
             $query->where('status','=',$filter['status']);
         }
 
@@ -125,6 +129,7 @@ class UserController extends AdminController
         $user->province = $request->input('province',0);
         $user->city = $request->input('city',0);
         $user->description = $request->input('description');
+        $user->status = $request->input('status',0);
 
         if($request->hasFile('avatar')){
             $user_id = $user->id;

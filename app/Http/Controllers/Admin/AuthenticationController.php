@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Models\Area;
 use App\Models\Authentication;
 use Illuminate\Http\Request;
 
@@ -13,7 +14,9 @@ class AuthenticationController extends AdminController
 
     protected  $validateRules = [
         'real_name' => 'required|max:64',
-        'id_card' =>   'required|max:24',
+        'title' => 'required|max:128',
+        'description' => 'sometimes|max:9999',
+        'id_card' => 'required|max:64|unique:authentications',
         'id_card_image' => 'sometimes|image|max:2048',
         'skill' => 'required|max:128',
         'skill_image' => 'sometimes|image|max:2048',
@@ -29,6 +32,8 @@ class AuthenticationController extends AdminController
         $query = Authentication::query();
         $filter =  $request->all();
 
+        $filter['category_id'] = $request->input('category_id',-1);
+
         /*认证申请状态过滤*/
         if(isset($filter['status']) && $filter['status'] > -1){
             $query->where('status','=',$filter['status']);
@@ -36,6 +41,10 @@ class AuthenticationController extends AdminController
 
         if( isset($filter['id_card']) && $filter['id_card']){
             $query->where('id_card','=',$filter['id_card']);
+        }
+
+        if( $filter['category_id'] > 0 ){
+            $query->where('category_id','=',$filter['category_id']);
         }
 
         $authentications = $query->orderBy('updated_at','desc')->paginate(20);
@@ -52,7 +61,13 @@ class AuthenticationController extends AdminController
     public function edit($id)
     {
         $authentication = Authentication::find($id);
-        return view('admin.authentication.edit')->with(compact('authentication'));
+        $provinces = Area::provinces();
+        $cities = Area::cities($authentication->province);
+        $data = [
+            'provinces' => $provinces,
+            'cities' => $cities,
+        ];
+        return view('admin.authentication.edit')->with(compact('authentication','data'));
 
     }
 
@@ -69,6 +84,7 @@ class AuthenticationController extends AdminController
         if(!$authentication){
             return $this->error(route('admin.authentication.index'),'行家认证信息不存在，请核实');
         }
+        $this->validateRules['id_card'] = 'required|max:64|unique:authentications,id_card,'.$authentication->user_id.',user_id';
         $this->validate($request,$this->validateRules);
 
         $data = $request->all();
@@ -96,6 +112,16 @@ class AuthenticationController extends AdminController
         return $this->success(route('admin.authentication.index'),'行家认证信息修改成功');
 
 
+    }
+
+    /*修改分类*/
+    public function changeCategories(Request $request){
+        $ids = $request->input('ids','');
+        $categoryId = $request->input('category_id',0);
+        if($ids){
+            Authentication::whereIn('user_id',explode(",",$ids))->update(['category_id'=>$categoryId]);
+        }
+        return $this->success(route('admin.authentication.index'),'分类修改成功');
     }
 
 

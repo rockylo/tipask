@@ -3,7 +3,9 @@
 @section('seo_title'){{ parse_seo_template('seo_article_title',$article) }}@endsection
 @section('seo_keyword'){{ parse_seo_template('seo_article_keyword',$article) }}@endsection
 @section('seo_description'){{ parse_seo_template('seo_article_description',$article) }}@endsection
-
+@section('css')
+    <link href="{{ asset('/static/js/fancybox/jquery.fancybox.min.css')}}" rel="stylesheet">
+@endsection
 @section('content')
     <div class="row mt-10">
         <div class="col-xs-12 col-md-9 main">
@@ -12,11 +14,10 @@
                 @if($article->tags)
                     <ul class="taglist-inline">
                         @foreach($article->tags as $tag)
-                            <li class="tagPopup"><a class="tag" href="{{ route('ask.tag.index',['name'=>$tag->name]) }}">{{ $tag->name }}</a></li>
+                            <li class="tagPopup"><a class="tag" href="{{ route('ask.tag.index',['id'=>$tag->id]) }}">{{ $tag->name }}</a></li>
                         @endforeach
                     </ul>
                 @endif
-
                 <div class="content mt-10">
                     <div class="quote mb-20">
                          {{ $article->summary }}
@@ -25,10 +26,15 @@
                         {!! $article->content !!}
                     </div>
                     <div class="post-opt mt-30">
-                        <ul class="list-inline">
-                            <li class="text-muted">
+                        <ul class="list-inline text-muted">
+                            <li>
                                 <i class="fa fa-clock-o"></i>
                                 发表于 {{ timestamp_format($article->created_at) }}
+                            </li>
+                            <li>阅读 ( {{$article->views}} )</li>
+                            @if($article->category)
+                            <li>分类：<a href="{{ route('website.blog',['category_slug'=>$article->category->slug]) }}" target="_blank">{{ $article->category->name }}</a>
+                            @endif
                             </li>
                             @if($article->status !== 2 && Auth()->check() && (Auth()->user()->id === $article->user_id || Auth()->user()->is('admin') ) )
                             <li><a href="{{ route('blog.article.edit',['id'=>$article->id]) }}" class="edit" data-toggle="tooltip" data-placement="right" title="" data-original-title="进一步完善文章内容"><i class="fa fa-edit"></i> 编辑</a></li>
@@ -39,7 +45,9 @@
                 <div class="text-center mt-10 mb-20">
 
                     <button id="support-button" class="btn btn-success btn-lg mr-5" data-source_id="{{ $article->id }}" data-source_type="article"  data-support_num="{{ $article->supports }}">{{ $article->supports }} 推荐</button>
-
+                    @if($article->user->qrcode)
+                        <button class="btn btn-warning btn-lg" data-toggle="modal" data-target="#payment-qrcode-modal-article-{{ $article->id  }}" ><i class="fa fa-heart-o" aria-hidden="true"></i> 打赏</button>
+                    @endif
                     @if(Auth()->check() && Auth()->user()->isCollected(get_class($article),$article->id))
                         <button id="collect-button" class="btn btn-default btn-lg" data-loading-text="加载中..." data-source_type = "article" data-source_id = "{{ $article->id }}" > 已收藏</button>
                     @else
@@ -93,7 +101,7 @@
         <div class="col-xs-12 col-md-3 side">
             <div class="widget-user">
                 <div class="media">
-                    <a class="pull-left" href="{{ route('auth.space.index',['user_id'=>$article->user_id]) }}"><img class="media-object avatar-64" src="{{ route('website.image.avatar',['avatar_name'=>$article->user_id.'_middle'])}}" alt="不写代码的码农"></a>
+                    <a class="pull-left" href="{{ route('auth.space.index',['user_id'=>$article->user_id]) }}"><img class="media-object avatar-64" src="{{ get_user_avatar($article->user_id) }}" alt="不写代码的码农"></a>
                     <div class="media-body ">
                         <a href="{{ route('auth.space.index',['user_id'=>$article->user_id]) }}" class="media-heading">{{ $article->user->name }}</a>
                         @if($article->user->title)
@@ -111,7 +119,7 @@
                 <ol class="widget-top10">
                     @foreach($topUsers as $index => $topUser)
                         <li class="text-muted">
-                            <img class="avatar-32" src="{{ route('website.image.avatar',['avatar_name'=>$topUser['id'].'_middle'])}}">
+                            <img class="avatar-32" src="{{ get_user_avatar($topUser['id'],'middle') }}">
                             <a href="{{ route('auth.space.index',['user_id'=>$topUser['id']]) }}" class="ellipsis">{{ $topUser['name'] }}</a>
                             <span class="text-muted pull-right">{{ $topUser['articles'] }} 文章</span>
                         </li>
@@ -119,12 +127,13 @@
 
                 </ol>
             </div>
-
         </div>
     </div>
 @endsection
 
 @section('script')
+    @include('theme::layout.qrcode_pament',['source_id'=>'article-'.$article->id,'paymentUser'=>$article->user,'message'=>'如果觉得我的文章对您有用，请随意打赏。你的支持将鼓励我继续创作！'])
+    <script type="text/javascript" src="{{ asset('/static/js/fancybox/jquery.fancybox.min.js') }}"></script>
     <script type="text/javascript">
         $(document).ready(function() {
             var article_id = "{{ $article->id }}";
